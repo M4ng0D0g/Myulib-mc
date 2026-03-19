@@ -32,7 +32,12 @@ jobs:
 
       - name: 🧹 清理不需要的開發檔 (刪除 dev.jar)
         # 避免把沒有混淆映射的 dev.jar 也上傳上去誤導其他開發者
-        run: rm -f build/libs/*-dev.jar || true
+        run: |
+          if ls build/libs/*-dev.jar 1> /dev/null 2>&1; then
+            rm build/libs/*-dev.jar
+          else
+            echo "沒有發現 dev.jar，直接跳過。"
+          fi
 
       - name: 🚀 自動發布到 GitHub Releases
         uses: softprops/action-gh-release@v2
