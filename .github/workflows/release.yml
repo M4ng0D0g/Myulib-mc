@@ -1,0 +1,43 @@
+name: Build and Release Mango UI
+
+# 觸發條件：當你推送以 "v" 開頭的 Tag 時（例如 v1.0.0 或 v1.1.0）
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    # 開放 GitHub Token 的寫入權限，讓機器人可以幫你建立 Release
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: ☕ 設定 Java 21 環境
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: 🐘 設定 Gradle 快取與環境
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: 🔨 執行 Gradle 打包編譯
+        run: ./gradlew build
+
+      - name: 🧹 清理不需要的開發檔 (刪除 dev.jar)
+        # 避免把沒有混淆映射的 dev.jar 也上傳上去誤導其他開發者
+        run: rm build/libs/*-dev.jar
+
+      - name: 🚀 自動發布到 GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          # 自動抓取 build/libs 下剩下的 .jar (包含主程式與 sources 原始碼)
+          files: build/libs/*.jar
+          generate_release_notes: true # 自動根據你的 Commit 生成更新日誌
+          prerelease: ${{ contains(github.ref, 'test') || contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
