@@ -3,9 +3,20 @@
 	"id": "mango-ui",
 	"version": "${version}",
 	"name": "Mango UI",
+	"description": "A general-purpose Fabric utility library featuring a high-performance ECS UI framework.",
+	"authors": [
+		"M4ng0D0g"
+	],
+	"contact": {
+		"homepage": "https://github.com/M4ng0D0g/MyuLib",
+		"sources": "https://github.com/M4ng0D0g/MyuLib"
+	},
+	"license": "MIT",
+	"icon": "assets/myulib/icon.png",
+	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.myudog.mangoui.MangoUI"
+          "Myulib"
 		]
 	},
 	"depends": {
