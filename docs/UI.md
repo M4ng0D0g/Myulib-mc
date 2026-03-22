@@ -159,6 +159,14 @@ Data-driven / Collection
 - ItemSlot: docs/ui_nodes/ItemSlot.md
 - InteractiveSlot: docs/ui_nodes/InteractiveSlot.md
 
+Developer testing checklist
+--------------------------
+
+Mark which components you've tested locally in the project by editing:
+
+- [Tested components checklist](docs/tested_components.md)
+
+
 Decorative / Visual
 - Label: docs/ui_nodes/Label.md
 - Image: docs/ui_nodes/Image.md
