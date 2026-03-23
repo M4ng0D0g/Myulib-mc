@@ -3,8 +3,7 @@ name: Build and Release Mango UI
 # 觸發條件：當你推送以 "v" 開頭的 Tag 時（例如 v1.0.0 或 v1.1.0）
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ "main", "master" ]
 
 jobs:
   build-and-release:
