@@ -7,6 +7,7 @@ import com.myudog.myulib.client.api.ui.theme.UiTheme
 import com.myudog.myulib.client.api.ui.data.UiSchema
 import com.myudog.myulib.client.util.IdentifierCompat
 import com.myudog.myulib.client.api.ui.theme.ThemeManager
+import com.myudog.myulib.client.api.ui.theme.DefaultTheme
 import net.minecraft.client.MinecraftClient
 import net.minecraft.util.Identifier
 import java.io.InputStreamReader
@@ -52,7 +53,7 @@ internal object ThemeLoader {
     // No longer mutating UiSchema globally — wrap values into UiTheme
 
     private fun wrapAsUiTheme(data: JsonThemeData): UiTheme {
-        return object : UiTheme {
+        return object : DefaultTheme(name = "LoadedTheme") {
             // 優先從 JSON 讀取面板配置，若無則提供 Fallback
             override val panelBg = Color.fromHex(data.panel.bg)
             override val panelBorder = Color.fromHex(data.panel.border)

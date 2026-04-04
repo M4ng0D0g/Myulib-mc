@@ -2,8 +2,10 @@ package com.myudog.myulib.client
 
 import com.myudog.myulib.api.ecs.EcsWorld
 import com.myudog.myulib.client.api.ui.hud.HudManager
+import com.myudog.myulib.client.api.command.TestCommandsRegistry
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
+import net.fabricmc.loader.api.FabricLoader
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -53,5 +55,9 @@ object MyulibClient : ClientModInitializer {
 
         // 這裡可以放置需要依賴 Minecraft 啟動後的邏輯
         // 例如：註冊渲染事件、監聽按鍵等
+
+        if (FabricLoader.getInstance().isDevelopmentEnvironment) {
+            TestCommandsRegistry.register()
+        }
     }
 }

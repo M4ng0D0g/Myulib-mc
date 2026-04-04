@@ -15,6 +15,13 @@ object ThemeManager {
     var current: UiTheme = DefaultDarkTheme
         private set
 
+    val onThemeChangedListeners = mutableListOf<() -> Unit>()
+
+    fun setTheme(theme: UiTheme) {
+        current = theme
+        onThemeChangedListeners.forEach { it.invoke() }
+    }
+
     /**
      * 由 ThemeLoader 在讀取 JSON 時呼叫，將數據轉換為物件
      */
