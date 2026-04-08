@@ -1,6 +1,8 @@
 plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
+
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
 }
 
 version = project.mod_version
@@ -12,7 +14,8 @@ base {
 }
 
 repositories {
-    // Loom 會自動加入必要的 Maven，若有其他外部模組依賴再放這裡
+    gradlePluginPortal()
+    mavenCentral()
 }
 
 loom {

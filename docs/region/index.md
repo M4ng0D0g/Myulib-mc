@@ -1,17 +1,16 @@
-﻿# Region System
+﻿# Region System (legacy / transition)
 
-The Region system handles area partitioning, lookup, and region lifecycle management.
+`Region` is the old name for the independent `Field` system. Prefer `docs/field/index.md` for the current architecture.
 
 ## 類別架構關係
-- `RegionCore` 描述 region 的資料模型與操作接口。
-- `RegionManager` 是 region 的建立、綁定與更新中心。
-- Region 會被 Game 系統用來把 instance 內的地圖區域、邏輯區段或玩法區間分開管理。
+- `RegionCore` / `RegionManager` 仍保留作過渡相容；新架構請以 `Field` 系統為準。
+- `Field` 會被用來把 instance 內的地圖區域、邏輯區段或玩法區間分開管理。
 - 與 ECS / Game / Logic / Component 的聯動主要發生在 instance 更新與事件處理流程中。
 
 ## 目前進度
-- ✅ Region 文件已整理到 canonical `docs/region/`。
-- ✅ 與 GameInstance 的關係已在 game 章節的進度註記中交代。
-- ⏳ 後續若擴充 region definition / runtime hook，會在此補充。
+- ✅ 舊 `region` 文件保留作過渡參考。
+- ✅ 新主線請改看 `docs/field/` 與 `docs/access/`。
+- ⏳ 若需要舊名相容層，會在此補充。
 
 ## Public class navigation list
 - [RegionCore](RegionCore.md)

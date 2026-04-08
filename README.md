@@ -11,11 +11,14 @@
 - [ECS](docs/ecs/index.md)
 - [Event](docs/event/index.md)
 - [Component](docs/component/index.md)
-- [Region](docs/region/index.md)
+- [Access Systems](docs/access/index.md)
+- [Field](docs/field/index.md)
+- [Region](docs/region/index.md)（舊名／過渡）
 - [Game](docs/game/index.md)
 - [Timer](docs/timer/index.md)
 - [Logic](docs/logic/index.md)
 - [Floating](docs/floating/index.md)
+- [Object](docs/object/index.md)
 - [Animation](docs/animation/index.md)
 - [UI](docs/ui/index.md)
 - [UI Nodes](docs/ui/nodes/index.md)
@@ -28,8 +31,9 @@
 - **ECS**：核心文件已整理成 canonical index，作為整個專案資料流基底。
 - **Event**：事件匯流排與跨系統訊號文件已收斂到 `docs/event/`。
 - **Component**：Component / Manager / Binding 關係已集中到 `docs/component/`。
-- **Region**：Region / Manager 的文件已進入 canonical 結構。
-- **Game**：已完成遊戲物件、隊伍、mixins hooks、測試任務與文件大示範。
+- **Access Systems**：`Field` / `Identity` / `Permission` / `Team` 已拆成獨立系統，入口集中到 `docs/access/`。
+- **Region**：舊 `region` 文件保留過渡參考，主線請改看 `docs/field/`。
+- **Game**：已完成遊戲物件、隊伍、mixins hooks、測試任務與文件大示範；`Game` 只負責遊戲流程核心。
 - **Timer**：Timer core 與 example 已整理到 `docs/timer/`。
 - **Logic**：條件 / 動作 / 信號 / facts resolver 的文件已集中。
 - **Floating**：懸浮物體與 VFX 文件已集中到 `docs/floating/`。

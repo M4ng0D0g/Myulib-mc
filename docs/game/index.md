@@ -1,22 +1,22 @@
 ﻿# Game System
 
-The Game system is the high-level flow entry point. It manages game definitions, instances, state transitions, special game objects, and team bindings.
+The Game system is the high-level flow entry point. It manages game definitions, instances, and state transitions; `team` / `timer` / `object` are documented as standalone systems and only bridged here where necessary.
 
 ## 類別架構關係
-- `Game` 是啟動入口，負責安裝 `GameManager`、`RegionManager`、`ComponentManager`、`TimerManager`。
+- `Game` 是啟動入口，負責安裝 `GameManager`、`ComponentManager`、`TimerManager`；`Field` / `Identity` / `Permission` / `Team` 走獨立 access 架構。
 - `GameManager` 是定義與 instance 的中央註冊表，也是 `tickAll()` 的全域驅動者。
-- `GameDefinition` 是所有遊戲的設定基底，定義 state、feature、object、team、logic、region、component 的建立方式。
-- `GameInstance` 是實際執行中的遊戲容器，內含 feature store、special objects、teams、regions、components、logic、timers。
+- `GameDefinition` 是所有遊戲的設定基底，定義 state、feature、logic、component，以及可選的 team / access seed 建立方式。
+- `GameInstance` 是實際執行中的遊戲容器，內含 feature store、special objects、components、logic；`team` / `timer` / `object` 走獨立系統文件。
 - `GameObjectBindingFeature` / `GameObjectHooks` 負責遊戲物件 runtime 與 mixin/hook 分發。
-- `GameTeamFeature` / `GameTeamDefinition` / `GameTeamColor` 負責程式碼建立的隊伍與成員綁定。
-- `LogicFactsResolver` 會從 `GameInstance` 讀取 team / object / timer facts。
+- `GameTeamFeature` / `GameTeamDefinition` / `GameTeamColor` 負責程式碼建立的隊伍與成員綁定；access 類系統請看 `docs/access/`，team 主線請看 `docs/team/`。
+- `LogicFactsResolver` 會從 `GameInstance` 與外部系統讀取 facts。
 - `RespawnGameExample` 是目前最完整的示範定義。
 
 ## 目前進度
-- ✅ 已完成遊戲物件核心、隊伍核心、hooks facade、server tick / interact mixin、整合測試。
-- ✅ `runGameFeatureTests` 已通過，驗證 object / team / instance flow。
+- ✅ 已完成遊戲流程核心、hooks facade、server tick / interact mixin、整合測試。
+- ✅ `runGameFeatureTests` 已通過，驗證 object / team / instance flow；相關系統的主線文件已分流。
 - ✅ `GameObjectKind` 包含 `RESPAWN_POINT` / `MINEABLE` / `USABLE` / `ATTACKABLE` / `INTERACTABLE` / `CUSTOM`。
-- 🟡 目前 mixin 已接到方塊互動與攻擊互動；respawn 專門接管、client side hook 與更多原版事件仍可再擴充。
+- 🟡 目前 mixin 已接到方塊互動與攻擊互動；access 類系統與 client settings UI 仍在持續補齊。
 
 ## Public class navigation list
 - [GameCore](GameCore.md)

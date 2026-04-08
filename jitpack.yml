@@ -1,6 +1,5 @@
-# 指定編譯環境為 Java 21
 jdk:
-  - openjdk21
+  - openjdk25
 
 # 告訴 JitPack 執行編譯任務
 install:

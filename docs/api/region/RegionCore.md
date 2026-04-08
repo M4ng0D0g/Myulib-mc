@@ -1,6 +1,6 @@
-# Region 系統核心 API 參考
+# Region 系統核心 API 參考（legacy / transition）
 
-本頁集中說明 `RegionModels` 內的區域型別。
+本頁保留舊 `RegionModels` 的文件；新主線請看 `docs/field/`。
 
 ## RegionModels.RegionBounds
 - 欄位：`minX`, `minY`, `minZ`, `maxX`, `maxY`, `maxZ`

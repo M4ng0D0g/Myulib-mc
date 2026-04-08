@@ -6,7 +6,7 @@ The Timer system handles timer creation, triggering, and payload extensions.
 - `TimerCore` 是 timer 的核心 API 入口。
 - `TimerManager` 是 timer 建立、更新、暫停與恢復的管理中心。
 - `TimerEvents` / `TimerPayloads` 負責 timer 與事件 / payload 的對接。
-- Game 系統會透過 `GameInstance.timers()` 使用這一層。
+- Game 系統可以透過橋接使用這一層，但 timer 本身是獨立系統。
 - Logic 系統會讀取 timer 事件來驅動規則與動作。
 
 ## 目前進度

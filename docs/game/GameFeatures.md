@@ -11,7 +11,7 @@ Use this page when you need the class-level contract, then follow the field and 
 - Methods are listed in the existing API content below.
 Game Features API 參考
 
-本頁整理 `game` 中所有 feature 型別，這些類別皆為 Java 類別或介面。
+本頁整理 `game` 既有的 feature / bridge 型別；`team`、`timer`、`object` 的主線文件請優先看各自的獨立系統頁面。
 
 ## GameFeature
 - `interface GameFeature`
@@ -23,6 +23,7 @@ Game Features API 參考
 ## GameTimerFeature
 - 欄位：`timerInstanceIds`, `tags`
 - 方法：`add(timerInstanceId)`, `add(timerInstanceId, tag)`, `remove(timerInstanceId)`, `clear()`
+- 備註：這是過渡相容的 runtime feature，timer 主線文件請看 `docs/timer/`。
 
 ## GameScoreboardFeature
 - 欄位：`objectiveId`, `displayName`, `lines`, `values`
@@ -39,6 +40,7 @@ Game Features API 參考
 ## GameObjectBindingFeature
 - 欄位：`requiredConfigs`, `runtimeBindings`
 - 方法：`bind(config, runtimeObject)`, `attachRuntime(id, runtimeObject)`, `getRuntime(id)`, `clear()`
+- 備註：這是過渡相容的 runtime feature，object 主線文件請看 `docs/object/`。
 
 ## GameLogicFeature<S>
 - 欄位：`engine`

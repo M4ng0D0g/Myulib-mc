@@ -1,4 +1,6 @@
-# RegionManager API 參考
+# RegionManager API 參考（legacy / transition）
+
+新主線請改看 `docs/field/` 與 `FieldManager`。
 
 ## 類別
 `class RegionManager`

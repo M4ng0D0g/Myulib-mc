@@ -11,7 +11,7 @@ Use this page when you need the class-level contract, then follow the field and 
 - Methods are listed in the existing API content below.
 Logic 系統使用說明（入口索引）
 
-`logic/` 是玩法規則引擎層，負責接收 signal、檢查條件、執行動作，並與 `GameInstance`、`TimerManager`、`RegionManager`、`ComponentManager` 串接。
+`logic/` 是玩法規則引擎層，負責接收 signal、檢查條件、執行動作，並與 `GameInstance`、`TimerManager`、`FieldManager`、`ComponentManager` 以及 access 系統串接。
 
 ## 系統入口
 - [LogicCore](../api/logic/LogicCore.md)
@@ -35,7 +35,7 @@ Logic 系統使用說明（入口索引）
 ## 本系統適合做什麼
 - 規則式玩法編排
 - timer 完成後切 state
-- region 進出檢查後執行動作
+- field 進出與 permission 攔截後執行動作
 - component / entity / block signal 的高階處理
 
 ## 文件導覽

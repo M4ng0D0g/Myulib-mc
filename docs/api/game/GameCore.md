@@ -4,10 +4,10 @@
 
 ## Game
 
-`Game` 是模組初始化入口。
+`Game` 是模組初始化入口，負責遊戲流程核心；`team` / `timer` / `object` 與 access 類系統請看各自的獨立文件。
 
 ### 方法
-- `init()`：註冊 `GameManager`、`RegionManager`、`ComponentManager`、`TimerManager`。
+- `init()`：註冊 `GameManager`、`ComponentManager`、`TimerManager`。
 
 ### 用法
 ```java
