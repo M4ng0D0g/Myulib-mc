@@ -1,13 +1,13 @@
 package com.myudog.myulib.api.game.example;
 
-import com.myudog.myulib.api.game.GameDefinition;
 import com.myudog.myulib.api.game.bootstrap.GameBootstrapConfig;
 import com.myudog.myulib.api.game.feature.GameFeature;
 import com.myudog.myulib.api.game.feature.GameScoreboardFeature;
 import com.myudog.myulib.api.game.feature.GameTimerFeature;
 import com.myudog.myulib.api.game.instance.GameInstance;
+import com.myudog.myulib.api.game.state.GameDefinition;
 import com.myudog.myulib.api.game.state.GameStateContext;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -18,7 +18,7 @@ public class RespawnGameExample extends GameDefinition<RespawnGameExample.Respaw
     public enum RespawnGameState { WAITING, COUNTDOWN, ACTIVE, FINISHED }
 
     public RespawnGameExample() {
-        super(Identifier.of("myulib", "respawn_game"));
+        super(Identifier.fromNamespaceAndPath("myulib", "respawn_game"));
     }
 
     @Override
@@ -38,7 +38,7 @@ public class RespawnGameExample extends GameDefinition<RespawnGameExample.Respaw
 
     @Override
     public Set<Identifier> getRequiredSpecialObjectIds() {
-        return Set.of(Identifier.of("myulib", "respawn_anchor"));
+        return Set.of(Identifier.fromNamespaceAndPath("myulib", "respawn_anchor"));
     }
 
     @Override
@@ -72,3 +72,5 @@ public class RespawnGameExample extends GameDefinition<RespawnGameExample.Respaw
         instance.timers().clear();
     }
 }
+
+

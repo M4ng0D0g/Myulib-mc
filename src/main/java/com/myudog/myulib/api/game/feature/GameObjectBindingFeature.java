@@ -6,10 +6,10 @@ import com.myudog.myulib.api.game.object.GameObjectContext;
 import com.myudog.myulib.api.game.object.GameObjectDefinition;
 import com.myudog.myulib.api.game.object.GameObjectKind;
 import com.myudog.myulib.api.game.object.GameObjectRuntime;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
-import java.util.LinkedHashMap;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

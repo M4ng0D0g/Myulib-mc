@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.game.logic.facts;
 
 import com.myudog.myulib.api.game.instance.GameInstance;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 public interface LogicFactsResolver {
     LogicFactsResolver DEFAULT = new LogicFactsResolver() {

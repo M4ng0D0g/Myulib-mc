@@ -10,9 +10,11 @@ import com.myudog.myulib.api.game.object.GameObjectKind;
 import com.myudog.myulib.api.game.object.GameObjectHooks;
 import com.myudog.myulib.api.game.object.GameObjectRuntime;
 import com.myudog.myulib.api.game.object.GameObjectContext;
+import com.myudog.myulib.api.game.state.GameDefinition;
 import com.myudog.myulib.api.game.team.GameTeamColor;
 import com.myudog.myulib.api.game.team.GameTeamDefinition;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
+import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -23,20 +25,14 @@ public final class GameFeatureTestSuite {
     private GameFeatureTestSuite() {
     }
 
-    public static void main(String[] args) {
-        objectBindingFeatureSupportsRuntimeHooks();
-        teamFeatureTracksMembersAndColors();
-        gameDefinitionCanDeclareObjectsAndTeamsThroughInstanceCreation();
-        System.out.println("Game feature tests passed.");
-    }
-
-    static void objectBindingFeatureSupportsRuntimeHooks() {
+    @Test
+    void objectBindingFeatureSupportsRuntimeHooks() {
         GameObjectBindingFeature feature = new GameObjectBindingFeature();
-        Identifier objectId = Identifier.of("myulib", "respawn_anchor");
+        Identifier objectId = Identifier.fromNamespaceAndPath("myulib", "respawn_anchor");
         GameObjectConfig config = new GameObjectConfig(
             objectId,
             GameObjectKind.RESPAWN_POINT,
-            Identifier.of("minecraft", "block"),
+            Identifier.fromNamespaceAndPath("minecraft", "block"),
             "Respawn Anchor",
             true,
             Map.of("hook", "spawn")
@@ -62,14 +58,15 @@ public final class GameFeatureTestSuite {
         TestSupport.assertTrue(attached.get());
         TestSupport.assertTrue(feature.getDefinition(objectId).isPresent());
         TestSupport.assertTrue(feature.getRuntime(objectId).isPresent());
-        TestSupport.assertTrue(feature.interact(null, objectId, Identifier.of("myulib", "player"), GameObjectKind.USABLE, Map.of("action", "use")));
+        TestSupport.assertTrue(feature.interact(null, objectId, Identifier.fromNamespaceAndPath("myulib", "player"), GameObjectKind.USABLE, Map.of("action", "use")));
         TestSupport.assertTrue(interacted.get());
     }
 
-    static void teamFeatureTracksMembersAndColors() {
+    @Test
+    void teamFeatureTracksMembersAndColors() {
         GameTeamFeature feature = new GameTeamFeature();
-        Identifier teamId = Identifier.of("myulib", "red_team");
-        Identifier playerId = Identifier.of("myulib", "player_one");
+        Identifier teamId = Identifier.fromNamespaceAndPath("myulib", "red_team");
+        Identifier playerId = Identifier.fromNamespaceAndPath("myulib", "player_one");
         GameTeamDefinition team = new GameTeamDefinition(teamId, "Red Team", GameTeamColor.RED, true, true, Map.of("arena", "default"));
 
         feature.register(team);
@@ -81,11 +78,12 @@ public final class GameFeatureTestSuite {
         TestSupport.assertTrue(GameTeamColor.RED.isRed());
     }
 
-    static void gameDefinitionCanDeclareObjectsAndTeamsThroughInstanceCreation() {
+    @Test
+    void gameDefinitionCanDeclareObjectsAndTeamsThroughInstanceCreation() {
         Game.init();
-        Identifier gameId = Identifier.of("myulib", "object_team_test");
-        Identifier objectId = Identifier.of("myulib", "spawn_anchor");
-        Identifier teamId = Identifier.of("myulib", "alpha_team");
+        Identifier gameId = Identifier.fromNamespaceAndPath("myulib", "object_team_test");
+        Identifier objectId = Identifier.fromNamespaceAndPath("myulib", "spawn_anchor");
+        Identifier teamId = Identifier.fromNamespaceAndPath("myulib", "alpha_team");
         GameDefinition<TestState> definition = new GameDefinition<>(gameId) {
             @Override
             public TestState getInitialState() {
@@ -103,7 +101,7 @@ public final class GameFeatureTestSuite {
 
             @Override
             public java.util.List<GameObjectConfig> createGameObjects(GameBootstrapConfig config) {
-                return java.util.List.of(new GameObjectConfig(objectId, GameObjectKind.RESPAWN_POINT, Identifier.of("minecraft", "block"), "Spawn Anchor", true));
+                return java.util.List.of(new GameObjectConfig(objectId, GameObjectKind.RESPAWN_POINT, Identifier.fromNamespaceAndPath("minecraft", "block"), "Spawn Anchor", true));
             }
 
             @Override
@@ -132,4 +130,6 @@ public final class GameFeatureTestSuite {
         FINISHED
     }
 }
+
+
 

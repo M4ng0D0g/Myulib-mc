@@ -1,7 +1,8 @@
 package com.myudog.myulib.api.shape;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
+
 import java.util.List;
 public interface IShape {
-    List<Vec3d> getOutlinePoints(Vec3d size, double density);
-    List<Vec3d> getSolidPoints(Vec3d size, double density);
+    List<Vec3> getOutlinePoints(Vec3 size, double density);
+    List<Vec3> getSolidPoints(Vec3 size, double density);
 }

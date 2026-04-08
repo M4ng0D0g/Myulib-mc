@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.game.components;
 
 import com.myudog.myulib.api.game.instance.GameInstance;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -110,3 +110,5 @@ public class ComponentManager {
         }
     }
 }
+
+

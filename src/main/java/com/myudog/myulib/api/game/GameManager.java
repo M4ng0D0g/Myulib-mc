@@ -6,10 +6,14 @@ import com.myudog.myulib.api.game.components.ComponentManager;
 import com.myudog.myulib.api.game.feature.GameFeature;
 import com.myudog.myulib.api.game.feature.GameLogicFeature;
 import com.myudog.myulib.api.game.instance.GameInstance;
-import com.myudog.myulib.api.game.region.RegionManager;
-import com.myudog.myulib.api.game.team.GameTeamDefinition;
+import com.myudog.myulib.api.field.FieldManager;
+import com.myudog.myulib.api.identity.IdentityManager;
+import com.myudog.myulib.api.permission.PermissionAdminService;
+import com.myudog.myulib.api.permission.PermissionSeed;
+import com.myudog.myulib.api.team.TeamManager;
 import com.myudog.myulib.api.game.timer.TimerManager;
-import net.minecraft.util.Identifier;
+import com.myudog.myulib.api.game.state.GameDefinition;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -58,8 +62,28 @@ public final class GameManager {
             instance.putFeature(feature);
         }
         instance.teams().clear();
-        for (GameTeamDefinition teamDefinition : definition.createTeams(bootstrap)) {
+        for (var field : definition.createFields(bootstrap)) {
+            FieldManager.register(field);
+        }
+        for (var group : definition.createIdentityGroups(bootstrap)) {
+            IdentityManager.register(group);
+        }
+        for (var teamDefinition : definition.createTeams(bootstrap)) {
             instance.teams().register(teamDefinition);
+            TeamManager.register(new com.myudog.myulib.api.team.TeamDefinition(
+                teamDefinition.id().toString(),
+                teamDefinition.displayName(),
+                teamDefinition.color().name(),
+                teamDefinition.properties().entrySet().stream().collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
+            ));
+        }
+        for (PermissionSeed seed : definition.createPermissionSeeds(bootstrap)) {
+            switch (seed.layer()) {
+                case GLOBAL -> PermissionAdminService.grantGlobal(seed.grant());
+                case DIMENSION -> PermissionAdminService.grantDimension(seed.scopeId(), seed.grant());
+                case FIELD -> PermissionAdminService.grantField(seed.scopeId(), seed.grant());
+                case USER -> PermissionAdminService.grantUser(java.util.UUID.fromString(seed.scopeId()), seed.grant());
+            }
         }
         for (GameObjectConfig objectConfig : definition.createGameObjects(bootstrap)) {
             instance.registerSpecialObject(objectConfig);
@@ -67,7 +91,6 @@ public final class GameManager {
         instance.getFeatureOrCreate(GameLogicFeature.class).engine.setFactsResolver(definition.createLogicFactsResolver(bootstrap));
         instance.getFeatureOrCreate(GameLogicFeature.class).bind(instance);
         instance.getFeatureOrCreate(GameLogicFeature.class).engine.registerAll(definition.createLogicRules(bootstrap));
-        RegionManager.bindInstance(instance, definition.createRegions(bootstrap));
         ComponentManager.bindInstance(instance, definition.createComponentBindings(bootstrap));
         bootstrap.specialObjects().values().forEach(instance::registerSpecialObject);
         INSTANCES.put(instanceId, instance);

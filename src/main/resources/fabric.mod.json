@@ -1,28 +1,31 @@
 ﻿{
-"schemaVersion": 1,
-"id": "mango-ui",
-"version": "${version}",
-"name": "Mango UI",
-"description": "A general-purpose Fabric utility library featuring a high-performance ECS UI framework.",
-"authors": [
-"M4ng0D0g"
-],
-"contact": {
-"homepage": "https://github.com/M4ng0D0g/MyuLib",
-"sources": "https://github.com/M4ng0D0g/MyuLib"
-},
-"license": "MIT",
-"icon": "assets/myulib/icon.png",
-"environment": "*",
-"entrypoints": {
-"main": [
-"com.myudog.myulib.Myulib"
-],
-"client": [
-"com.myudog.myulib.client.MyulibClient"
-]
-},
-"depends": {
-"fabricloader": ">=0.15.11"
-}
+  "schemaVersion": 1,
+  "id": "myulib",
+  "version": "${version}",
+  "name": "Myulib",
+  "description": "A general-purpose Fabric utility library featuring a high-performance ECS UI framework.",
+  "authors": [
+    "M4ng0D0g"
+  ],
+  "contact": {
+    "homepage": "https://github.com/M4ng0D0g/MyuLib",
+    "sources": "https://github.com/M4ng0D0g/MyuLib"
+  },
+  "license": "MIT",
+  "icon": "assets/myulib/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.myudog.myulib.Myulib"
+    ],
+    "client": [
+      "com.myudog.myulib.client.MyulibClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.6",
+    "minecraft": "~26.1",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
 }

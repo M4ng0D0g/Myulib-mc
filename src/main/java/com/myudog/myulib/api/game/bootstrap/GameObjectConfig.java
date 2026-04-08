@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.game.bootstrap;
 
 import com.myudog.myulib.api.game.object.GameObjectKind;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Map;
 import java.util.Objects;
@@ -25,3 +25,5 @@ public record GameObjectConfig(Identifier id, GameObjectKind kind, Identifier ty
         this(id, kind, type, name, required, Map.of());
     }
 }
+
+

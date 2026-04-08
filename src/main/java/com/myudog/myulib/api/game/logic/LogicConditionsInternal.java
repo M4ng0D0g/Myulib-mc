@@ -5,7 +5,7 @@ import com.myudog.myulib.api.game.feature.GameTimerFeature;
 import com.myudog.myulib.api.game.instance.GameInstance;
 import com.myudog.myulib.api.game.timer.TimerManager;
 import com.myudog.myulib.api.game.timer.TimerModels;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Arrays;
 import java.util.Set;
@@ -40,4 +40,6 @@ final class LogicConditionsInternal {
         return java.util.Optional.ofNullable(TimerManager.getSnapshot(timerEntityId));
     }
 }
+
+
 

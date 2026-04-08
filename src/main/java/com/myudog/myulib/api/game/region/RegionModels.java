@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.game.region;
 
 import com.myudog.myulib.api.game.instance.GameInstance;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Map;
@@ -100,3 +100,5 @@ public final class RegionModels {
         }
     }
 }
+
+

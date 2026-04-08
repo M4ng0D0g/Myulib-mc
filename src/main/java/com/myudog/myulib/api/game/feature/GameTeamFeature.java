@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.game.feature;
 
 import com.myudog.myulib.api.game.team.GameTeamDefinition;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -88,5 +88,7 @@ public class GameTeamFeature implements GameFeature {
         playerTeams.clear();
     }
 }
+
+
 
 

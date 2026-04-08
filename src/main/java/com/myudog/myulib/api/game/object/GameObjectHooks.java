@@ -3,8 +3,8 @@ package com.myudog.myulib.api.game.object;
 import com.myudog.myulib.api.game.bootstrap.GameObjectConfig;
 import com.myudog.myulib.api.game.GameManager;
 import com.myudog.myulib.api.game.instance.GameInstance;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.Identifier;
 
 import java.util.Map;
 
@@ -63,12 +63,14 @@ public final class GameObjectHooks {
         return consumed;
     }
 
-    public static Identifier toPlayerIdentifier(ServerPlayerEntity player) {
+    public static Identifier toPlayerIdentifier(ServerPlayer player) {
         if (player == null) {
             return null;
         }
-        return Identifier.of("myulib", "player_" + player.getUuidAsString().replace("-", ""));
+        return Identifier.fromNamespaceAndPath("myulib", "player_" + player.getUUID().toString().replace("-", ""));
     }
 }
+
+
 
 

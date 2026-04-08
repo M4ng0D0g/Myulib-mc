@@ -1,10 +1,10 @@
 package com.myudog.myulib.internal.game;
 
-import com.myudog.myulib.api.game.GameDefinition;
 import com.myudog.myulib.api.game.GameManager;
 import com.myudog.myulib.api.game.bootstrap.GameBootstrapConfig;
 import com.myudog.myulib.api.game.instance.GameInstance;
-import net.minecraft.util.Identifier;
+import com.myudog.myulib.api.game.state.GameDefinition;
+import net.minecraft.resources.Identifier;
 
 public class DefaultGameManager {
     public static void install() { GameManager.install(); }

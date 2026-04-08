@@ -1,7 +1,7 @@
 package com.myudog.myulib.internal.dynamics;
 
 import com.myudog.myulib.api.dynamics.IForceField;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 
 public final class RadialForceField implements IForceField {
     private final boolean attractive;
@@ -17,16 +17,16 @@ public final class RadialForceField implements IForceField {
     }
 
     @Override
-    public Vec3d calculateForce(Vec3d pos, Vec3d center, double strength) {
-        Vec3d direction = attractive ? center.subtract(pos) : pos.subtract(center);
-        double distanceSq = direction.lengthSquared();
+    public Vec3 calculateForce(Vec3 pos, Vec3 center, double strength) {
+        Vec3 direction = attractive ? center.subtract(pos) : pos.subtract(center);
+        double distanceSq = direction.lengthSqr();
         if (distanceSq < 0.0001 || distanceSq > maxRange * maxRange) {
-            return Vec3d.ZERO;
+            return Vec3.ZERO;
         }
 
         double distance = Math.sqrt(distanceSq);
         double falloff = (maxRange - distance) / maxRange;
         double magnitude = strength * falloff;
-        return direction.normalize().multiply(magnitude);
+        return direction.normalize().scale(magnitude);
     }
 }

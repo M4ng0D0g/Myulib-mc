@@ -4,7 +4,7 @@ public final class GameStateContracts {
     private GameStateContracts() {
     }
 
-    public static <S extends Enum<S>> GameStateContext<S> context(net.minecraft.util.Identifier gameId, int instanceId, S from, S to) {
+    public static <S extends Enum<S>> GameStateContext<S> context(net.minecraft.resources.Identifier gameId, int instanceId, S from, S to) {
         return new GameStateContext<>(gameId, instanceId, from, to);
     }
 
@@ -12,3 +12,4 @@ public final class GameStateContracts {
         return new GameTransition<>(from, to, allowed);
     }
 }
+

@@ -1,6 +1,6 @@
 package com.myudog.myulib.api.game.timer;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.UUID;
 
@@ -9,7 +9,7 @@ public final class RespawnTimerExample {
     }
 
     public static TimerModels.Timer timer() {
-        return new TimerModels.Timer(Identifier.of("myulib", "respawn"), 100L, TimerModels.TimerMode.COUNT_DOWN, true)
+        return new TimerModels.Timer(Identifier.fromNamespaceAndPath("myulib", "respawn"), 100L, TimerModels.TimerMode.COUNT_DOWN, true)
                 .onRemainingTick(20L, snapshot -> {
                     if (snapshot.payload() instanceof TimerModels.RespawnTimerPayload payload && payload.allowSkip()) {
                         // no-op example hook
@@ -21,3 +21,4 @@ public final class RespawnTimerExample {
         return new TimerModels.RespawnTimerPayload(playerId, allowSkip);
     }
 }
+

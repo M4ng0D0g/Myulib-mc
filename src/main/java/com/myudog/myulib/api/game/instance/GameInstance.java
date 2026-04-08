@@ -1,6 +1,5 @@
 package com.myudog.myulib.api.game.instance;
 
-import com.myudog.myulib.api.game.GameDefinition;
 import com.myudog.myulib.api.game.bootstrap.GameBootstrapConfig;
 import com.myudog.myulib.api.game.bootstrap.GameObjectConfig;
 import com.myudog.myulib.api.game.feature.GameComponentFeature;
@@ -14,7 +13,8 @@ import com.myudog.myulib.api.game.feature.GameTeamFeature;
 import com.myudog.myulib.api.game.feature.GameTimerFeature;
 import com.myudog.myulib.api.game.logic.LogicSignals;
 import com.myudog.myulib.api.game.state.GameStateContext;
-import net.minecraft.util.Identifier;
+import com.myudog.myulib.api.game.state.GameDefinition;
+import net.minecraft.resources.Identifier;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -125,3 +125,5 @@ public class GameInstance<S extends Enum<S>> {
     public boolean hasSpecialObject(Identifier id) { return specialObjects.containsKey(id); }
     public GameObjectConfig requireSpecialObject(Identifier id) { GameObjectConfig config = specialObjects.get(id); if (config == null) throw new IllegalStateException("Missing special object: " + id); return config; }
 }
+
+

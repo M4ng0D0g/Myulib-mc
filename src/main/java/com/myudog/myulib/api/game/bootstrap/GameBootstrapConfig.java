@@ -1,6 +1,6 @@
 package com.myudog.myulib.api.game.bootstrap;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Map;
 
@@ -14,3 +14,5 @@ public record GameBootstrapConfig(Map<Identifier, GameObjectConfig> specialObjec
         this(Map.of(), Map.of());
     }
 }
+
+

@@ -6,13 +6,14 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
 import java.util.function.BooleanSupplier;
 
 @Mixin(MinecraftServer.class)
-public class ExampleMixin {
-	@Inject(method = "tick", at = @At("TAIL"))
-	private void myulib$tick(BooleanSupplier shouldKeepTicking, CallbackInfo info) {
+public class MinecraftServerMixin {
+
+	// 【關鍵修正】將目標方法改為 Mojang 官方名稱 "tickServer"
+	@Inject(method = "tickServer", at = @At("TAIL"))
+	private void myulib$tick(BooleanSupplier hasTimeLeft, CallbackInfo info) {
 		GameManager.tickAll();
 	}
 }

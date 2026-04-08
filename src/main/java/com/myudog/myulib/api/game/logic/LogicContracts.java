@@ -3,7 +3,7 @@ package com.myudog.myulib.api.game.logic;
 import com.myudog.myulib.api.game.instance.GameInstance;
 import com.myudog.myulib.api.game.logic.facts.LogicFactsResolver;
 import com.myudog.myulib.api.game.timer.TimerModels.TimerSnapshot;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;

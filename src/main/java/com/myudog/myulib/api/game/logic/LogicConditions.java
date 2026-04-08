@@ -8,7 +8,7 @@ public final class LogicConditions {
     public static <S extends Enum<S>> LogicContracts.LogicCondition<S> stateIs(S state) { return LogicConditionsInternal.stateIs(state); }
     @SafeVarargs public static <S extends Enum<S>> LogicContracts.LogicCondition<S> stateIn(S... states) { return LogicConditionsInternal.stateIn(states); }
     public static <S extends Enum<S>> LogicContracts.LogicCondition<S> hasFeature(Class<? extends com.myudog.myulib.api.game.feature.GameFeature> type) { return LogicConditionsInternal.hasFeature(type); }
-    public static <S extends Enum<S>> LogicContracts.LogicCondition<S> specialObjectExists(net.minecraft.util.Identifier id) { return LogicConditionsInternal.specialObjectExists(id); }
+    public static <S extends Enum<S>> LogicContracts.LogicCondition<S> specialObjectExists(net.minecraft.resources.Identifier id) { return LogicConditionsInternal.specialObjectExists(id); }
     public static <S extends Enum<S>> LogicContracts.LogicCondition<S> timerStatusIs(com.myudog.myulib.api.game.timer.TimerModels.TimerStatus status) { return LogicConditionsInternal.timerStatusIs(status); }
     public static <S extends Enum<S>> LogicContracts.LogicCondition<S> timerModeIs(com.myudog.myulib.api.game.timer.TimerModels.TimerMode mode) { return LogicConditionsInternal.timerModeIs(mode); }
     public static <S extends Enum<S>> LogicContracts.LogicCondition<S> timerRemainingEquals(long ticks) { return LogicConditionsInternal.timerRemainingEquals(ticks); }
@@ -20,3 +20,4 @@ public final class LogicConditions {
     public static <S extends Enum<S>> LogicContracts.LogicCondition<S> gameTimeEquals(int ticks) { return LogicConditionsInternal.gameTimeEquals(ticks); }
     public static <S extends Enum<S>> LogicContracts.LogicCondition<S> custom(java.util.function.Predicate<LogicContracts.LogicContext<S>> predicate) { return LogicConditionsInternal.custom(predicate); }
 }
+

@@ -2,7 +2,7 @@ package com.myudog.myulib.api.game.components;
 
 import com.myudog.myulib.api.game.instance.GameInstance;
 import com.myudog.myulib.api.game.region.RegionModels;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,3 +95,5 @@ public final class ComponentModels {
         }
     }
 }
+
+

@@ -22,11 +22,12 @@ final class LogicActionsInternal {
     static <S extends Enum<S>> LogicContracts.LogicAction<S> resetCurrentTimer(boolean clearPayload) { return context -> firstTimerId(context.instance()).ifPresent(id -> TimerManager.reset(id, clearPayload)); }
     static <S extends Enum<S>> LogicContracts.LogicAction<S> setScoreboardLine(int index, String value) { return context -> context.instance().scoreboard().setLine(index, value); }
     static <S extends Enum<S>> LogicContracts.LogicAction<S> setScoreboardValue(String key, int value) { return context -> context.instance().scoreboard().setValue(key, value); }
-    static <S extends Enum<S>> LogicContracts.LogicAction<S> attachGameObject(net.minecraft.util.Identifier id, Object runtimeObject) { return context -> context.instance().objectBindings().attachRuntime(id, runtimeObject); }
+    static <S extends Enum<S>> LogicContracts.LogicAction<S> attachGameObject(net.minecraft.resources.Identifier id, Object runtimeObject) { return context -> context.instance().objectBindings().attachRuntime(id, runtimeObject); }
 
     private static <S extends Enum<S>> java.util.Optional<Integer> firstTimerId(GameInstance<S> instance) {
         GameTimerFeature timers = instance.timers();
         return timers.timerInstanceIds.stream().findFirst();
     }
 }
+
 

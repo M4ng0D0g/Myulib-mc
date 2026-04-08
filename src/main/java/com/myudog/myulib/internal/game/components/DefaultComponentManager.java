@@ -3,7 +3,7 @@ package com.myudog.myulib.internal.game.components;
 import com.myudog.myulib.api.game.components.ComponentManager;
 import com.myudog.myulib.api.game.components.ComponentModels;
 import com.myudog.myulib.api.game.instance.GameInstance;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 public class DefaultComponentManager {
     public static void install() { ComponentManager.install(); }

@@ -1,80 +1,96 @@
 plugins {
-    id 'fabric-loom'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
-version = providers.gradleProperty('mod_version').get()
-group = providers.gradleProperty('maven_group').get()
+
+version = project.mod_version
+group = project.maven_group
+
 base {
-    archivesName = providers.gradleProperty('archives_base_name')
+    // 修正：使用更穩定的 Groovy 屬性讀取方式
+    archivesName = project.archives_base_name
 }
+
 repositories {
-    // Add repositories to retrieve artifacts from in here.
-    // You should only use this when depending on other mods because
-    // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-    // See https://docs.gradle.org/current/userguide/declaring_repositories.html
-    // for more information about repositories.
+    // Loom 會自動加入必要的 Maven，若有其他外部模組依賴再放這裡
 }
+
 loom {
     splitEnvironmentSourceSets()
     mods {
-        register('Myulib') {
+        // 修正：在 Groovy DSL 中直接使用字串定義，拔除 'register'
+        "Myulib" {
             sourceSet sourceSets.main
             sourceSet sourceSets.client
         }
     }
 }
+
 dependencies {
-    // To change the versions see the gradle.properties file
-    minecraft "com.mojang:minecraft:${providers.gradleProperty('minecraft_version').get()}"
-    mappings "net.fabricmc:yarn:${providers.gradleProperty('yarn_mappings').get()}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${providers.gradleProperty('loader_version').get()}"
-    // Fabric API. This is technically optional, but you probably want it anyway.
-//    clientImplementation "net.fabricmc.fabric-api:fabric-api:${providers.gradleProperty('fabric_api_version').get()}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${providers.gradleProperty('fabric_api_version').get()}"
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.0"
+    testImplementation "org.junit.platform:junit-platform-suite-engine:1.10.0"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
-tasks.processResources {
-    inputs.property('version', version)
-    filesMatching('fabric.mod.json') {
-        expand('version': version)
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// 修正：統一使用原生的 Groovy Task 區塊宣告
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": inputs.properties.version
     }
 }
+
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
+    it.options.release = 25
 }
+
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
+
+// 保留您優秀的自定義測試腳本！
 tasks.register('runAnimationTests', JavaExec) {
     group = 'verification'
     description = 'Runs the standalone animation tests.'
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.myudog.myulib.api.animation.AnimationTestSuite'
 }
+
 tasks.register('runGameFeatureTests', JavaExec) {
     group = 'verification'
     description = 'Runs the standalone game feature tests.'
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.myudog.myulib.api.game.GameFeatureTestSuite'
 }
-tasks.jar {
-    inputs.property('archivesName', base.archivesName)
-    from('LICENSE') {
+
+jar {
+    inputs.property "archivesName", base.archivesName
+    from("LICENSE") {
         rename { "${it}_${base.archivesName.get()}" }
     }
 }
+
 publishing {
     publications {
-        register('mavenJava', MavenPublication) {
-            artifactId = base.archivesName.get()
+        create("mavenJava", MavenPublication) {
             from components.java
         }
     }
     repositories {
-        // Add repositories to publish to here.
-        // Notice: This block does NOT have the same function as the block in the top level.
-        // The repositories here will be used for publishing your artifact, not for
-        // retrieving dependencies.
+        // 發布用的儲存庫設定
     }
 }

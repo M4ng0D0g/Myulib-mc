@@ -1,6 +1,6 @@
 package com.myudog.myulib.api.game.object;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Map;
 
@@ -25,4 +25,6 @@ public record GameObjectDefinition(
         this(id, kind, type, name, required, Map.of());
     }
 }
+
+
 

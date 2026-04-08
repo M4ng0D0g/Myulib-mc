@@ -1,21 +1,21 @@
 package com.myudog.myulib.api.event.events;
 
 import com.myudog.myulib.api.event.FailableEvent;
-import net.minecraft.entity.Entity;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 
 public class EntitySpawnEvent implements FailableEvent {
     private final Entity entity;
-    private final World world;
+    private final Level Level;
     private String errorMessage;
 
-    public EntitySpawnEvent(Entity entity, World world) {
-        this(entity, world, null);
+    public EntitySpawnEvent(Entity entity, Level Level) {
+        this(entity, Level, null);
     }
 
-    public EntitySpawnEvent(Entity entity, World world, String errorMessage) {
+    public EntitySpawnEvent(Entity entity, Level Level, String errorMessage) {
         this.entity = entity;
-        this.world = world;
+        this.Level = Level;
         this.errorMessage = errorMessage;
     }
 
@@ -23,8 +23,8 @@ public class EntitySpawnEvent implements FailableEvent {
         return entity;
     }
 
-    public World getWorld() {
-        return world;
+    public Level getWorld() {
+        return Level;
     }
 
     @Override
@@ -37,3 +37,5 @@ public class EntitySpawnEvent implements FailableEvent {
         this.errorMessage = errorMessage;
     }
 }
+
+

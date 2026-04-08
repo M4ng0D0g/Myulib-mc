@@ -1,14 +1,14 @@
 package com.myudog.myulib.api.floating;
 
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 public interface IFloatingObject {
-	void spawn(Vec3d pos);
+	void spawn(Vec3 pos);
 
 	void remove();
 
-	void moveTo(Vec3d pos, int interpolationDuration);
+	void moveTo(Vec3 pos, int interpolationDuration);
 
 	void setScale(Vector3f scale, int interpolationDuration);
 

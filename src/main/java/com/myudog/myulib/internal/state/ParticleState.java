@@ -1,15 +1,14 @@
 package com.myudog.myulib.internal.state;
-import net.minecraft.util.math.Vec3d;
-public final class ParticleState {
-    public Vec3d pos;
-    public Vec3d vel;
+import net.minecraft.world.phys.Vec3;public final class ParticleState {
+    public Vec3 pos;
+    public Vec3 vel;
     public int age;
     public final int maxAge;
     public final double randomSeed;
-    public ParticleState(Vec3d pos, Vec3d vel, int age, int maxAge) {
+    public ParticleState(Vec3 pos, Vec3 vel, int age, int maxAge) {
         this(pos, vel, age, maxAge, Math.random());
     }
-    public ParticleState(Vec3d pos, Vec3d vel, int age, int maxAge, double randomSeed) {
+    public ParticleState(Vec3 pos, Vec3 vel, int age, int maxAge, double randomSeed) {
         this.pos = pos;
         this.vel = vel;
         this.age = age;

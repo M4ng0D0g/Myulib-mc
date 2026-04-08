@@ -1,6 +1,6 @@
 package com.myudog.myulib.api.game.timer;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,7 +32,7 @@ public class TimerManager {
         return TIMERS.containsKey(timerId);
     }
 
-    public static int createInstance(Identifier timerId, Long ownerEntityId, TimerModels.TimerPayload payload, boolean autoStart, Object world) {
+    public static int createInstance(Identifier timerId, Long ownerEntityId, TimerModels.TimerPayload payload, boolean autoStart, Object Level) {
         TimerModels.Timer timer = TIMERS.get(timerId);
         if (timer == null) {
             throw new IllegalArgumentException("Unknown timer: " + timerId);
@@ -46,7 +46,7 @@ public class TimerManager {
         return instanceId;
     }
 
-    public static TimerModels.TimerInstance getInstance(int timerEntityId, Object world) {
+    public static TimerModels.TimerInstance getInstance(int timerEntityId, Object Level) {
         return INSTANCES.get(timerEntityId);
     }
 
@@ -63,14 +63,14 @@ public class TimerManager {
         return new TimerModels.TimerSnapshot(timerEntityId, instance.ownerEntityId, timer, instance.status, instance.elapsedTicks, remaining, instance.payload, instance.lastUpdatedTick);
     }
 
-    public static List<TimerModels.TimerInstance> findInstances(Long ownerEntityId, Object world) {
+    public static List<TimerModels.TimerInstance> findInstances(Long ownerEntityId, Object Level) {
         return INSTANCES.values().stream().filter(instance -> Objects.equals(instance.ownerEntityId, ownerEntityId)).toList();
     }
 
-    public static boolean isRunning(int timerEntityId, Object world) { return getInstance(timerEntityId, world) != null && getInstance(timerEntityId, world).isRunning(); }
-    public static boolean isPaused(int timerEntityId, Object world) { return getInstance(timerEntityId, world) != null && getInstance(timerEntityId, world).isPaused(); }
-    public static boolean isStopped(int timerEntityId, Object world) { return getInstance(timerEntityId, world) != null && getInstance(timerEntityId, world).isStopped(); }
-    public static boolean isCompleted(int timerEntityId, Object world) { return getInstance(timerEntityId, world) != null && getInstance(timerEntityId, world).isCompleted(); }
+    public static boolean isRunning(int timerEntityId, Object Level) { return getInstance(timerEntityId, Level) != null && getInstance(timerEntityId, Level).isRunning(); }
+    public static boolean isPaused(int timerEntityId, Object Level) { return getInstance(timerEntityId, Level) != null && getInstance(timerEntityId, Level).isPaused(); }
+    public static boolean isStopped(int timerEntityId, Object Level) { return getInstance(timerEntityId, Level) != null && getInstance(timerEntityId, Level).isStopped(); }
+    public static boolean isCompleted(int timerEntityId, Object Level) { return getInstance(timerEntityId, Level) != null && getInstance(timerEntityId, Level).isCompleted(); }
 
     public static void start(int timerEntityId) {
         updateState(timerEntityId, TimerModels.TimerStatus.RUNNING, snapshot -> snapshot.timer().startedActions.forEach(action -> action.invoke(snapshot)));
@@ -124,7 +124,7 @@ public class TimerManager {
         }
     }
 
-    public static void update(Object world) {
+    public static void update(Object Level) {
         for (Map.Entry<Integer, TimerModels.TimerInstance> entry : INSTANCES.entrySet()) {
             int id = entry.getKey();
             TimerModels.TimerInstance instance = entry.getValue();
@@ -165,3 +165,5 @@ public class TimerManager {
         }
     }
 }
+
+

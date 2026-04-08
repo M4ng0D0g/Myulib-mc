@@ -1,6 +1,6 @@
 package com.myudog.myulib.api.game.team;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Map;
 
@@ -21,4 +21,6 @@ public record GameTeamDefinition(
         this(id, displayName, GameTeamColor.DEFAULT, true, true, Map.of());
     }
 }
+
+
 

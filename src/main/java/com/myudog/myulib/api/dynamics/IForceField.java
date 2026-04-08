@@ -1,5 +1,4 @@
 package com.myudog.myulib.api.dynamics;
-import net.minecraft.util.math.Vec3d;
-public interface IForceField {
-    Vec3d calculateForce(Vec3d pos, Vec3d center, double strength);
+import net.minecraft.world.phys.Vec3;public interface IForceField {
+    Vec3 calculateForce(Vec3 pos, Vec3 center, double strength);
 }

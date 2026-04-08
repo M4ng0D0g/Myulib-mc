@@ -30,11 +30,11 @@ public final class AnimatorComponent<T> {
     }
 
     public long completedCycles() {
-        return completedCycles;
+        return effectiveCompletedCycles();
     }
 
     public boolean forward() {
-        return forward;
+        return spec.playMode() != PlayMode.PING_PONG || (effectiveCompletedCycles() % 2L) == 0L;
     }
 
     public T currentValue() {
@@ -75,6 +75,7 @@ public final class AnimatorComponent<T> {
             throw new IllegalArgumentException("newElapsedMillis must be >= 0");
         }
         elapsedMillis = newElapsedMillis;
+        syncTimelineState();
         applyCurrentValue();
     }
 
@@ -93,6 +94,7 @@ public final class AnimatorComponent<T> {
         }
 
         elapsedMillis += deltaMillis;
+        syncTimelineState();
         applyCurrentValue();
         return currentValue;
     }
@@ -107,6 +109,7 @@ public final class AnimatorComponent<T> {
             return;
         }
 
+        syncTimelineState();
         switch (spec.playMode()) {
             case ONCE -> {
                 long duration = spec.durationMillis();
@@ -135,6 +138,26 @@ public final class AnimatorComponent<T> {
                 target.apply(currentValue);
             }
         }
+    }
+
+    private void syncTimelineState() {
+        long duration = spec.durationMillis();
+        if (duration <= 0L) {
+            completedCycles = 0L;
+            forward = true;
+            return;
+        }
+
+        completedCycles = elapsedMillis / duration;
+        forward = spec.playMode() != PlayMode.PING_PONG || (completedCycles % 2L) == 0L;
+    }
+
+    private long effectiveCompletedCycles() {
+        long duration = spec.durationMillis();
+        if (duration <= 0L) {
+            return 0L;
+        }
+        return elapsedMillis / duration;
     }
 
     private void resetTimeline() {

@@ -2,8 +2,7 @@ package com.myudog.myulib.api.dynamics;
 
 import com.myudog.myulib.internal.dynamics.RadialForceField;
 import com.myudog.myulib.internal.dynamics.VortexForceField;
-import net.minecraft.util.math.Vec3d;
-
+import net.minecraft.world.phys.Vec3;
 public final class ForceFields {
     public static final IForceField ATTRACTION = new RadialForceField(true);
     public static final IForceField REPULSION = new RadialForceField(false);
@@ -24,7 +23,7 @@ public final class ForceFields {
         return new VortexForceField();
     }
 
-    public static IForceField vortex(Vec3d axis) {
+    public static IForceField vortex(Vec3 axis) {
         return new VortexForceField(axis);
     }
 }

@@ -1,31 +1,32 @@
 package com.myudog.myulib.internal.entity;
 
 import com.myudog.myulib.api.floating.IFloatingObject;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.Vec3d;
-import org.joml.Vector3f;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Display.ItemDisplay;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.phys.Vec3;import org.joml.Vector3f;
+
+
 
 public class ItemDisplayObject implements IFloatingObject {
-	private final ServerWorld world;
+	private final ServerLevel Level;
 	private final ItemStack itemStack;
-	private ItemDisplayEntity entity;
+	private ItemDisplay entity;
 	private Vector3f scale = new Vector3f(1.0f, 1.0f, 1.0f);
 	private Vector3f rotation = new Vector3f();
 
-	public ItemDisplayObject(ServerWorld world, ItemStack itemStack) {
-		this.world = world;
+	public ItemDisplayObject(ServerLevel Level, ItemStack itemStack) {
+		this.Level = Level;
 		this.itemStack = itemStack;
 	}
 
 	@Override
-	public void spawn(Vec3d pos) {
-		ItemDisplayEntity display = new ItemDisplayEntity(EntityType.ITEM_DISPLAY, world);
+	public void spawn(Vec3 pos) {
+		ItemDisplay display = new ItemDisplay(EntityType.ITEM_DISPLAY, Level);
 		display.setItemStack(itemStack.copy());
-		display.setPosition(pos.x, pos.y, pos.z);
-		world.spawnEntity(display);
+		display.setPos(pos);
+		Level.addFreshEntity(display);
 		entity = display;
 	}
 
@@ -38,9 +39,9 @@ public class ItemDisplayObject implements IFloatingObject {
 	}
 
 	@Override
-	public void moveTo(Vec3d pos, int interpolationDuration) {
+	public void moveTo(Vec3 pos, int interpolationDuration) {
 		if (entity != null) {
-			entity.setPosition(pos.x, pos.y, pos.z);
+			entity.setPos(pos);
 		}
 	}
 
@@ -54,3 +55,5 @@ public class ItemDisplayObject implements IFloatingObject {
 		this.rotation = new Vector3f(leftRotation);
 	}
 }
+
+

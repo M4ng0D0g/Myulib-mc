@@ -2,7 +2,7 @@ package com.myudog.myulib.api.game.object;
 
 import com.myudog.myulib.api.game.bootstrap.GameObjectConfig;
 import com.myudog.myulib.api.game.instance.GameInstance;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Map;
 
@@ -19,4 +19,6 @@ public record GameObjectContext(
         payload = payload == null ? Map.of() : Map.copyOf(payload);
     }
 }
+
+
 

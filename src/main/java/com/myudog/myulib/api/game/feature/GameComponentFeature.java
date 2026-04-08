@@ -1,6 +1,6 @@
 package com.myudog.myulib.api.game.feature;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -20,3 +20,5 @@ public class GameComponentFeature implements GameFeature {
         bindingIds.clear();
     }
 }
+
+

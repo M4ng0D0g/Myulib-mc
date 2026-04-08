@@ -41,7 +41,7 @@ public final class TimerModels {
     }
 
     public static final class Timer {
-        public final net.minecraft.util.Identifier id;
+        public final net.minecraft.resources.Identifier id;
         public final long durationTicks;
         public final TimerMode mode;
         public final boolean autoStopOnComplete;
@@ -55,8 +55,8 @@ public final class TimerModels {
         public final List<TimerAction> completedActions = new ArrayList<>();
         private int nextBindingId = 1;
 
-        public Timer(net.minecraft.util.Identifier id, long durationTicks) { this(id, durationTicks, TimerMode.COUNT_UP, true); }
-        public Timer(net.minecraft.util.Identifier id, long durationTicks, TimerMode mode, boolean autoStopOnComplete) {
+        public Timer(net.minecraft.resources.Identifier id, long durationTicks) { this(id, durationTicks, TimerMode.COUNT_UP, true); }
+        public Timer(net.minecraft.resources.Identifier id, long durationTicks, TimerMode mode, boolean autoStopOnComplete) {
             this.id = Objects.requireNonNull(id, "id");
             this.durationTicks = Math.max(0L, durationTicks);
             this.mode = mode == null ? TimerMode.COUNT_UP : mode;
@@ -87,7 +87,7 @@ public final class TimerModels {
 
     public static final class TimerInstance {
         public final int timerEntityId;
-        public final net.minecraft.util.Identifier timerId;
+        public final net.minecraft.resources.Identifier timerId;
         public final Long ownerEntityId;
         public TimerPayload payload;
         public TimerStatus status;
@@ -95,7 +95,7 @@ public final class TimerModels {
         public long lastUpdatedTick;
         public long pausedTicks;
 
-        public TimerInstance(int timerEntityId, net.minecraft.util.Identifier timerId, Long ownerEntityId, TimerPayload payload) {
+        public TimerInstance(int timerEntityId, net.minecraft.resources.Identifier timerId, Long ownerEntityId, TimerPayload payload) {
             this.timerEntityId = timerEntityId;
             this.timerId = timerId;
             this.ownerEntityId = ownerEntityId;
@@ -109,3 +109,4 @@ public final class TimerModels {
         public boolean isCompleted() { return status == TimerStatus.COMPLETED; }
     }
 }
+

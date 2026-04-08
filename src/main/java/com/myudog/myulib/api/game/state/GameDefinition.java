@@ -7,9 +7,11 @@ import com.myudog.myulib.api.game.feature.GameFeature;
 import com.myudog.myulib.api.game.instance.GameInstance;
 import com.myudog.myulib.api.game.logic.LogicContracts.LogicRule;
 import com.myudog.myulib.api.game.logic.facts.LogicFactsResolver;
+import com.myudog.myulib.api.field.FieldDefinition;
+import com.myudog.myulib.api.identity.IdentityGroupDefinition;
+import com.myudog.myulib.api.permission.PermissionSeed;
 import com.myudog.myulib.api.game.team.GameTeamDefinition;
-import com.myudog.myulib.api.game.region.RegionModels.RegionDefinition;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +41,11 @@ public abstract class GameDefinition<S extends Enum<S>> {
         return List.of();
     }
 
-    public List<GameObjectConfig> createGameObjects(GameBootstrapConfig config) {
+    public List<FieldDefinition> createFields(GameBootstrapConfig config) {
+        return List.of();
+    }
+
+    public List<IdentityGroupDefinition> createIdentityGroups(GameBootstrapConfig config) {
         return List.of();
     }
 
@@ -47,11 +53,15 @@ public abstract class GameDefinition<S extends Enum<S>> {
         return List.of();
     }
 
-    public List<LogicRule<S>> createLogicRules(GameBootstrapConfig config) {
+    public List<PermissionSeed> createPermissionSeeds(GameBootstrapConfig config) {
         return List.of();
     }
 
-    public List<RegionDefinition> createRegions(GameBootstrapConfig config) {
+    public List<GameObjectConfig> createGameObjects(GameBootstrapConfig config) {
+        return List.of();
+    }
+
+    public List<LogicRule<S>> createLogicRules(GameBootstrapConfig config) {
         return List.of();
     }
 

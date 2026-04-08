@@ -15,5 +15,6 @@ public final class LogicActions {
     public static <S extends Enum<S>> LogicContracts.LogicAction<S> resetCurrentTimer(boolean clearPayload) { return LogicActionsInternal.resetCurrentTimer(clearPayload); }
     public static <S extends Enum<S>> LogicContracts.LogicAction<S> setScoreboardLine(int index, String value) { return LogicActionsInternal.setScoreboardLine(index, value); }
     public static <S extends Enum<S>> LogicContracts.LogicAction<S> setScoreboardValue(String key, int value) { return LogicActionsInternal.setScoreboardValue(key, value); }
-    public static <S extends Enum<S>> LogicContracts.LogicAction<S> attachGameObject(net.minecraft.util.Identifier id, Object runtimeObject) { return LogicActionsInternal.attachGameObject(id, runtimeObject); }
+    public static <S extends Enum<S>> LogicContracts.LogicAction<S> attachGameObject(net.minecraft.resources.Identifier id, Object runtimeObject) { return LogicActionsInternal.attachGameObject(id, runtimeObject); }
 }
+

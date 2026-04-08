@@ -1,4 +1,5 @@
 package com.myudog.myulib.mixin.event;
 
-public class MixinServerWorld {
+public class MixinServerLevel {
 }
+

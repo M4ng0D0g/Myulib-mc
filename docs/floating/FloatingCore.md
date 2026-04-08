@@ -21,8 +21,8 @@ This section covers the Java floating-object helpers used by the VFX system.
 ## Main entry point
 
 ```java
-IFloatingObject obj = MyuVFX.createItemObject(serverWorld, itemStack);
-obj.spawn(new Vec3d(0.0, 64.0, 0.0));
+IFloatingObject obj = MyuVFX.createItemObject(ServerLevel, itemStack);
+obj.spawn(new Vec3(0.0, 64.0, 0.0));
 ```
 
 ## Notes
