@@ -17,7 +17,7 @@ final class CoreModelsTest {
         assertEquals(List.of(2, 3), toList(size.getShape()), "Size should preserve the original shape");
         Size expanded = size.add(new Size(1, 2));
         assertEquals(List.of(3, 5), toList(expanded.getShape()), "Addition should be applied per dimension");
-        Size reduced = expanded.substract(new Size(1, 1));
+        Size reduced = expanded.subtract(new Size(1, 1));
         assertEquals(List.of(2, 4), toList(reduced.getShape()), "Subtraction should be applied per dimension");
         Size doubled = reduced.multiply(2);
         assertEquals(List.of(4, 8), toList(doubled.getShape()), "Multiplication should scale each dimension");
@@ -32,7 +32,7 @@ final class CoreModelsTest {
                 "Mismatch exception should explain the dimension-count problem");
         IllegalArgumentException negative = assertThrows(
                 IllegalArgumentException.class,
-                () -> new Size(1, 1).substract(new Size(2, 0)),
+                () -> new Size(1, 1).subtract(new Size(2, 0)),
                 "Subtracting past zero should fail"
         );
         assertTrue(negative.getMessage().contains("尺寸相減後不得為負數"),

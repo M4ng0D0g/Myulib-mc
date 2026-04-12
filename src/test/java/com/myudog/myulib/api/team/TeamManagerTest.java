@@ -1,4 +1,5 @@
 package com.myudog.myulib.api.team;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 import java.util.EnumMap;
@@ -11,7 +12,7 @@ final class TeamManagerTest {
     void teamIdsCanBeScopedByGameAndRemovedWithGameCleanup() {
         TeamManager.clear();
         Identifier gameId = Identifier.fromNamespaceAndPath("myulib", "respawn_game");
-        TeamDefinition team = new TeamDefinition("blue", "Blue Team", TeamColor.BLUE, new EnumMap<>(TeamFlag.class));
+        TeamDefinition team = new TeamDefinition("blue", Component.translatable("myulib.test.team.blue"), TeamColor.BLUE, new EnumMap<>(TeamFlag.class));
         TeamDefinition scoped = TeamManager.register(gameId, team);
         assertEquals("myulib:respawn_game:blue", scoped.id(), "Scoped team id should include the game namespace");
         assertEquals(1, TeamManager.all(gameId).size(), "Exactly one team should be registered for the game");

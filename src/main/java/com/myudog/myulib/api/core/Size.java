@@ -64,7 +64,7 @@ public class Size {
      * @return 相減後產生的全新 Size 物件
      * @throws IllegalArgumentException 如果維度不一致，或相減後出現負數
      */
-    public Size substract(Size other) {
+    public Size subtract(Size other) {
         assertValidShape(other.shape);
 
         int[] newShape = new int[this.shape.length];
@@ -109,11 +109,13 @@ public class Size {
         }
         return true;
     }
-    public boolean enclose(int... shape) {
+
+    public boolean enclose(Index index) {
         assertValidShape(shape);
 
+        int[] shape = index.getShape();
         for (int i = 0; i < this.shape.length; i++) {
-            if (shape[i] > this.shape[i]) {
+            if (shape[i] < 0 || shape[i] >= this.shape[i]) {
                 return false;
             }
         }

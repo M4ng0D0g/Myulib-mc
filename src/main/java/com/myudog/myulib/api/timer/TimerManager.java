@@ -1,6 +1,7 @@
 package com.myudog.myulib.api.timer;
 
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -124,27 +125,54 @@ public class TimerManager {
         }
     }
 
-    public static void update(Object Level) {
-        for (Map.Entry<Integer, TimerModels.TimerInstance> entry : INSTANCES.entrySet()) {
+
+    public static void update(MinecraftServer server) { // 建議將 Object Level 改為 MinecraftServer
+        // 使用迭代器以便在遍歷時安全刪除已完成的實例
+        java.util.Iterator<Map.Entry<Integer, TimerModels.TimerInstance>> iterator = INSTANCES.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<Integer, TimerModels.TimerInstance> entry = iterator.next();
             int id = entry.getKey();
             TimerModels.TimerInstance instance = entry.getValue();
+
+            // 如果計時器已經停止或完成，直接從記憶體中移除以防止洩漏！
+            if (instance.isStopped() || instance.isCompleted()) {
+                iterator.remove();
+                continue;
+            }
+
             if (!instance.isRunning()) {
                 continue;
             }
+
             instance.elapsedTicks++;
             instance.lastUpdatedTick++;
             TimerModels.Timer timer = TIMERS.get(instance.timerId);
-            if (timer == null) {
-                continue;
-            }
+
+            if (timer == null) continue;
+
             TimerModels.TimerSnapshot snapshot = getSnapshot(id);
             if (snapshot != null) {
-                timer.elapsedBindings.values().stream().filter(binding -> binding.basis() == TimerModels.TimerTickBasis.ELAPSED && binding.tick() == instance.elapsedTicks).forEach(binding -> binding.action().invoke(snapshot));
                 long remaining = Math.max(0L, timer.durationTicks - instance.elapsedTicks);
-                timer.remainingBindings.values().stream().filter(binding -> binding.basis() == TimerModels.TimerTickBasis.REMAINING && binding.tick() == remaining).forEach(binding -> binding.action().invoke(snapshot));
+
+                // 🚀 效能優化：捨棄 Stream，改用傳統 foreach 避免每 Tick 產生大量 GC 垃圾
+                for (TimerModels.TimerBinding binding : timer.elapsedBindings.values()) {
+                    if (binding.basis() == TimerModels.TimerTickBasis.ELAPSED && binding.tick() == instance.elapsedTicks) {
+                        binding.action().invoke(snapshot);
+                    }
+                }
+
+                for (TimerModels.TimerBinding binding : timer.remainingBindings.values()) {
+                    if (binding.basis() == TimerModels.TimerTickBasis.REMAINING && binding.tick() == remaining) {
+                        binding.action().invoke(snapshot);
+                    }
+                }
+
+                // 檢查是否完成
                 if (instance.elapsedTicks >= timer.durationTicks) {
                     instance.status = TimerModels.TimerStatus.COMPLETED;
                     timer.completedActions.forEach(action -> action.invoke(snapshot));
+
                     if (timer.autoStopOnComplete) {
                         instance.status = TimerModels.TimerStatus.STOPPED;
                     }
