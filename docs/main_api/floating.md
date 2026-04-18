@@ -5,3 +5,6 @@ Primary classes:
 
 Responsibilities:
 - contract for floating object systems and integration points
+
+## Architecture
+- [Architecture diagram (Mermaid)](floating/architecture.mmd)

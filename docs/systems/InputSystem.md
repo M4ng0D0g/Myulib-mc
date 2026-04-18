@@ -8,11 +8,11 @@ Centralized UI input routing: receives mouse movement, clicks, drags, releases a
 
 Public API
 
-- `fun onMouseMove(world: EcsWorld, rootId: Int, mouseX: Double, mouseY: Double)`
-- `fun onMouseDown(world: EcsWorld, rootId: Int, mx: Double, my: Double, button: Int): Boolean`
-- `fun onMouseDragged(world: EcsWorld, mx: Double, my: Double)`
-- `fun onMouseReleased(world: EcsWorld)`
-- `fun onMouseScrolled(world: EcsWorld, mx: Double, my: Double, amount: Double): Boolean`
+- `fun onMouseMove(world: EcsContainer, rootId: Int, mouseX: Double, mouseY: Double)`
+- `fun onMouseDown(world: EcsContainer, rootId: Int, mx: Double, my: Double, button: Int): Boolean`
+- `fun onMouseDragged(world: EcsContainer, mx: Double, my: Double)`
+- `fun onMouseReleased(world: EcsContainer)`
+- `fun onMouseScrolled(world: EcsContainer, mx: Double, my: Double, amount: Double): Boolean`
 
 Key behaviors
 
@@ -42,6 +42,6 @@ override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean 
 
 Notes
 
-- InputSystem operates on an `EcsWorld` instance populated with UI components. Ensure the event originates from the correct Screen/world.
+- InputSystem operates on an `EcsContainer` instance populated with UI components. Ensure the event originates from the correct Screen/world.
 - For HUD interactions, route events into `HudManager.world` instead of the screen world.
 

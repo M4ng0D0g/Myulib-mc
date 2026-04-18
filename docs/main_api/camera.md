@@ -11,3 +11,6 @@ Primary classes:
 Responsibilities:
 - server/client camera action dispatch
 - camera tracking, shake, move-to, and reset orchestration
+
+## Architecture
+- [Architecture diagram (Mermaid)](camera/architecture.mmd)

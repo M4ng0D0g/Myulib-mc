@@ -3,7 +3,7 @@
 ECS is the base data-flow layer of this project. It manages entities, components, queries, and lifecycle flow.
 
 ## 類別架構關係
-- `EcsWorld` 是最上層容器，負責 entity 建立、component 存取與 query。
+- `EcsContainer` 是最上層容器，負責 entity 建立、component 存取與 query。
 - `ComponentStorage` 是底層密集儲存結構，支援 component 的 add/get/remove/clear。
 - `Component` 是所有資料元件的 marker interface。
 - `ComponentAddedEvent` 會在 component 被掛載後自動派發到事件系統。
@@ -20,7 +20,7 @@ ECS is the base data-flow layer of this project. It manages entities, components
 
 ## Large demo
 ```java
-EcsWorld world = new EcsWorld();
+EcsContainer container = new EcsContainer();
 int entity = world.createEntity();
 world.addComponent(entity, new PositionComponent(10, 20));
 world.addComponent(entity, new HealthComponent(100));

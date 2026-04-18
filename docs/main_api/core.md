@@ -7,3 +7,6 @@ Primary classes:
 
 Responsibilities:
 - lightweight value objects for coordinates, sizing, and grid math
+
+## Architecture
+- [Architecture diagram (Mermaid)](core/architecture.mmd)

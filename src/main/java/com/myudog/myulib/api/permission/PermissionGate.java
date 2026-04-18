@@ -36,14 +36,29 @@ public final class PermissionGate {
         Identifier dimId = player.level().dimension().identifier();
         Optional<FieldDefinition> field = FieldManager.findAt(dimId, resolvedPosition);
         var groups = RoleGroupManager.getSortedGroupIdsOf(player.getUUID());
+        Identifier fieldId = field.map(FieldDefinition::id).orElse(null);
 
         PermissionDecision decision = PermissionManager.evaluate(
                 player.getUUID(),
                 groups,
                 action,
-                field.map(FieldDefinition::id).orElse(null),
+                fieldId,
                 dimId
         );
+
+        // USE_ITEM acts as a master switch for use-like actions, except portal usage.
+        if (decision != PermissionDecision.DENY && action != PermissionAction.USE_PORTAL && action != PermissionAction.USE_ITEM && isUseLikeAction(action)) {
+            PermissionDecision useItemDecision = PermissionManager.evaluate(
+                    player.getUUID(),
+                    groups,
+                    PermissionAction.USE_ITEM,
+                    fieldId,
+                    dimId
+            );
+            if (useItemDecision == PermissionDecision.DENY) {
+                decision = PermissionDecision.DENY;
+            }
+        }
 
         DebugLogManager.log(DebugFeature.PERMISSION,
                 "player=" + player.getName().getString()
@@ -57,6 +72,23 @@ public final class PermissionGate {
                         + String.format("%.2f", resolvedPosition.z) + ")");
 
         return decision;
+    }
+
+    private static boolean isUseLikeAction(PermissionAction action) {
+        return switch (action) {
+            case BLOCK_PLACE,
+                 INTERACT_BLOCK,
+                 USE_BUCKET,
+                 IGNITE_BLOCK,
+                 INTERACT_ENTITY,
+                 RIDE_ENTITY,
+                 USE_SPAWN_EGG,
+                 ARMOR_STAND_MANIPULATE,
+                 USE_PROJECTILE,
+                 OPEN_CONTAINER,
+                 TRIGGER_REDSTONE -> true;
+            default -> false;
+        };
     }
 }
 

@@ -6,3 +6,6 @@ Primary classes:
 
 Responsibilities:
 - define dynamic force-field behavior contracts and presets
+
+## Architecture
+- [Architecture diagram (Mermaid)](dynamics/architecture.mmd)

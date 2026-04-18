@@ -8,3 +8,6 @@ Primary classes:
 Responsibilities:
 - bind/unbind player possession targets
 - buffer control inputs and forward to server-side controlled entities
+
+## Architecture
+- [Architecture diagram (Mermaid)](control/architecture.mmd)

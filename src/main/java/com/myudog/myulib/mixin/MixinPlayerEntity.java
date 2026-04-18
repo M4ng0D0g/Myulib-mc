@@ -1,11 +1,17 @@
 package com.myudog.myulib.mixin;
 
+import com.myudog.myulib.api.debug.DebugFeature;
+import com.myudog.myulib.api.debug.DebugLogManager;
+import com.myudog.myulib.api.debug.DebugTraceManager;
 import com.myudog.myulib.api.permission.PermissionAction;
+import com.myudog.myulib.api.permission.PermissionDecision;
 import com.myudog.myulib.api.permission.PermissionGate;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.TridentItem;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -17,13 +23,42 @@ public abstract class MixinPlayerEntity {
     @Inject(method = "attack", at = @At("HEAD"), cancellable = true)
     private void onAttackEntity(Entity target, CallbackInfo ci) {
         Player attacker = (Player) (Object) this;
-
-        PermissionAction action = PermissionAction.ATTACK_HOSTILE_MOB;
-        if (target instanceof Player) action = PermissionAction.ATTACK_PLAYER;
-        else if (target instanceof Animal || target instanceof Villager) action = PermissionAction.ATTACK_FRIENDLY_MOB;
-
-        if (PermissionGate.isDenied(attacker, action, target.position())) {
-            ci.cancel();
+        if (!(attacker instanceof ServerPlayer serverPlayer)) {
+            return;
         }
+
+        PermissionAction action = classifyAttackAction(attacker, target);
+
+        DebugTraceManager.begin(serverPlayer, "attack");
+        DebugTraceManager.step(serverPlayer, "action=" + action);
+        DebugTraceManager.step(serverPlayer, "target=" + target.getType().toString());
+        PermissionDecision decision = PermissionGate.evaluateDecision(serverPlayer, action, target.position());
+        DebugTraceManager.step(serverPlayer, "decision=" + decision);
+        DebugLogManager.log(DebugFeature.PERMISSION,
+                "attack action=" + action + ",decision=" + decision
+                        + ",attacker=" + attacker.getName().getString()
+                        + ",target=" + target.getType());
+
+        if (decision == PermissionDecision.DENY) {
+            ci.cancel();
+            DebugTraceManager.end(serverPlayer, "result=DENY");
+            return;
+        }
+
+        DebugTraceManager.end(serverPlayer, "result=ALLOW");
+    }
+
+    private static PermissionAction classifyAttackAction(Player attacker, Entity target) {
+        // Spear/trident left-click dash should follow USE_ITEM policy instead of attack policy.
+        if (attacker.getMainHandItem().getItem() instanceof TridentItem) {
+            return PermissionAction.USE_ITEM;
+        }
+        if (target instanceof Player) {
+            return PermissionAction.ATTACK_PLAYER;
+        }
+        if (target instanceof Animal || target instanceof Villager) {
+            return PermissionAction.ATTACK_FRIENDLY_MOB;
+        }
+        return PermissionAction.ATTACK_HOSTILE_MOB;
     }
 }

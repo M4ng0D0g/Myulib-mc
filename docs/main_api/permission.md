@@ -15,3 +15,6 @@ Responsibilities:
 - multi-scope permission storage and evaluation
 - global/dimension/field scoped group rule management
 - merged and scoped permission listing support in commands
+
+## Architecture
+- [Architecture diagram (Mermaid)](permission/architecture.mmd)

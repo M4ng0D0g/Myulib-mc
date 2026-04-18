@@ -5,3 +5,6 @@ Primary classes:
 
 Responsibilities:
 - color value abstraction for rendering/UI systems
+
+## Architecture
+- [Architecture diagram (Mermaid)](color/architecture.mmd)

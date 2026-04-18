@@ -68,4 +68,8 @@ public class EventDispatcherImpl {
         }
         return ProcessResult.PASS;
     }
+
+    public void clear() {
+        listeners.clear();
+    }
 }

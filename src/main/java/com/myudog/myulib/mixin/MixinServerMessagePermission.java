@@ -16,7 +16,7 @@ public abstract class MixinServerMessagePermission {
 
     @Shadow @Final public ServerPlayer player;
 
-    @Inject(method = {"handleChat", "handleChatCommand"}, at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "handleChat", at = @At("HEAD"), cancellable = true, require = 0)
     private void onMessage(CallbackInfo ci) {
         if (PermissionGate.isDenied(player, PermissionAction.SEND_MESSAGE, player.position())) {
             ci.cancel();

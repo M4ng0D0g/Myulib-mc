@@ -13,13 +13,13 @@ import com.myudog.myulib.api.debug.DebugTraceManager;
 import com.myudog.myulib.api.field.FieldDefinition;
 import com.myudog.myulib.api.field.FieldVisualizationManager;
 import com.myudog.myulib.api.field.FieldManager;
-import com.myudog.myulib.api.projection.ProjectionDefinition;
-import com.myudog.myulib.api.projection.ProjectionFeature;
-import com.myudog.myulib.api.projection.ProjectionManager;
-import com.myudog.myulib.api.projection.network.ProjectionNetworking;
-import com.myudog.myulib.api.game.core.GameConfig;
+import com.myudog.myulib.api.hologram.HologramDefinition;
+import com.myudog.myulib.api.hologram.HologramManager;
+import com.myudog.myulib.api.hologram.HologramFeature;
+import com.myudog.myulib.api.hologram.network.HologramNetworking;
 import com.myudog.myulib.api.game.core.GameInstance;
 import com.myudog.myulib.api.game.core.GameManager;
+import com.myudog.myulib.api.game.examples.TicTacToeGameDefinition;
 import com.myudog.myulib.api.permission.PermissionAction;
 import com.myudog.myulib.api.permission.PermissionDecision;
 import com.myudog.myulib.api.permission.PermissionManager;
@@ -39,6 +39,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permission;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.phys.AABB;
@@ -47,10 +48,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class AccessCommandService {
     public static final String COMMAND_PREFIX = Myulib.MOD_ID + ":";
     private static final Set<Identifier> TRACKED_TIMERS = new LinkedHashSet<>();
+    private static final Identifier TICTACTOE_BLUE_TEAM_ID = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "tictactoe_blue");
 
     public static void registerDefaults() {
         registerLocalCommands();
@@ -90,6 +93,24 @@ public class AccessCommandService {
         CommandRegistry.register(COMMAND_PREFIX + "rolegroup:count", context -> CommandResult.success("rolegroup=" + RoleGroupManager.groups().size()));
         CommandRegistry.register(COMMAND_PREFIX + "team:count", context -> CommandResult.success("team=" + TeamManager.all().size()));
         CommandRegistry.register(COMMAND_PREFIX + "game:count", context -> CommandResult.success("game_instance=" + GameManager.getInstances().size()));
+        CommandRegistry.register(COMMAND_PREFIX + "game:start", context -> {
+            String token = context.arguments().getOrDefault("id", "");
+            var resolved = GameManager.resolveInstanceId(token);
+            if (resolved.isEmpty()) {
+                return CommandResult.failure("game=not_found");
+            }
+            try {
+                int instanceId = resolved.getAsInt();
+                boolean started = GameManager.startInstance(instanceId);
+                return started
+                        ? CommandResult.success("game=started:" + instanceId)
+                        : CommandResult.failure("game=already_started_or_not_found");
+            } catch (IllegalArgumentException ex) {
+                return CommandResult.failure("game=start_invalid_config:" + ex.getMessage());
+            } catch (Exception ex) {
+                return CommandResult.failure("game=start_failed:" + ex.getClass().getSimpleName());
+            }
+        });
         CommandRegistry.register(COMMAND_PREFIX + "timer:count", context -> CommandResult.success("timer=" + TimerManager.timerDefinitionCount() + ",instance=" + TimerManager.timerInstanceCount()));
         CommandRegistry.register(COMMAND_PREFIX + "camera:status", context -> CommandResult.success("camera_bridge_ready"));
         CommandRegistry.register(COMMAND_PREFIX + "control:status", context -> CommandResult.success("control_bindings=" + ControlManager.controlledCount() + ",input_buffer=" + ControlManager.bufferedInputCount()));
@@ -135,6 +156,7 @@ public class AccessCommandService {
                                                                 .then(Commands.argument("z2", DoubleArgumentType.doubleArg())
                                                                         .executes(context -> {
                                                                             Identifier fieldId = Identifier.parse(StringArgumentType.getString(context, "id"));
+                                                                            fieldId = toMyulibIdentifier(fieldId.toString());
                                                                             Identifier dimId = context.getSource().getLevel().dimension().identifier();
                                                                             double x1 = DoubleArgumentType.getDouble(context, "x1");
                                                                             double y1 = DoubleArgumentType.getDouble(context, "y1");
@@ -207,7 +229,7 @@ public class AccessCommandService {
                             }
                             var player = context.getSource().getPlayer();
                             FieldVisualizationManager.disable(player.getUUID());
-                            ProjectionNetworking.syncToPlayer(player, List.of());
+                            HologramNetworking.syncToPlayer(player, List.of());
                             return reply(context.getSource(), "field=visualize:off");
                         }))
                 .then(Commands.literal("status")
@@ -252,7 +274,7 @@ public class AccessCommandService {
                                 })))
                 .then(Commands.literal("show")
                         .then(Commands.argument("feature", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(projectionFeatureSuggestions(), builder))
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(HologramFeatureSuggestions(), builder))
                                 .then(Commands.argument("enabled", StringArgumentType.word())
                                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("on", "off"), builder))
                                         .executes(context -> {
@@ -260,12 +282,11 @@ public class AccessCommandService {
                                                 return reply(context.getSource(), "field=visualize:player_only");
                                             }
                                             var playerId = context.getSource().getPlayer().getUUID();
-                                            ProjectionFeature feature = ProjectionFeature.parse(StringArgumentType.getString(context, "feature"));
+                                            HologramFeature feature = HologramFeature.parse(StringArgumentType.getString(context, "feature"));
                                             boolean enabled = "on".equalsIgnoreCase(StringArgumentType.getString(context, "enabled"));
                                             FieldVisualizationManager.setFeature(playerId, feature, enabled);
                                             return reply(context.getSource(), "field=visualize:show:" + feature.token() + "=" + onOff(enabled));
-                                        }))))
-        );
+                                        })))));
 
         dispatcher.register(root);
     }
@@ -360,7 +381,7 @@ public class AccessCommandService {
     }
 
     private static void registerProjectionCrud(CommandDispatcher<CommandSourceStack> dispatcher) {
-        var root = Commands.literal(COMMAND_PREFIX + "projection")
+        var root = Commands.literal(COMMAND_PREFIX + "hologram")
                 .requires(source -> source.permissions().hasPermission(new Permission.HasCommandLevel(PermissionLevel.GAMEMASTERS)));
 
         root.then(Commands.literal("create")
@@ -373,6 +394,7 @@ public class AccessCommandService {
                                                                 .then(Commands.argument("z2", DoubleArgumentType.doubleArg())
                                                                         .executes(context -> {
                                                                             Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
+                                                                            id = toMyulibIdentifier(id.toString());
                                                                             Identifier dimId = context.getSource().getLevel().dimension().identifier();
                                                                             double x1 = DoubleArgumentType.getDouble(context, "x1");
                                                                             double y1 = DoubleArgumentType.getDouble(context, "y1");
@@ -380,9 +402,9 @@ public class AccessCommandService {
                                                                             double x2 = DoubleArgumentType.getDouble(context, "x2");
                                                                             double y2 = DoubleArgumentType.getDouble(context, "y2");
                                                                             double z2 = DoubleArgumentType.getDouble(context, "z2");
-                                                                            AABB bounds = ProjectionManager.cuboidFromCorners(x1, y1, z1, x2, y2, z2);
-                                                                            ProjectionManager.register(new ProjectionDefinition(id, dimId, bounds, id.toString()));
-                                                                            return reply(context.getSource(), "projection=create:" + id);
+                                                                            AABB bounds = HologramManager.cuboidFromCorners(x1, y1, z1, x2, y2, z2);
+                                                                            HologramManager.register(new HologramDefinition(id, dimId, bounds, id.toString()));
+                                                                            return reply(context.getSource(), "hologram=create:" + id);
                                                                         })))))))));
 
         root.then(Commands.literal("read")
@@ -390,11 +412,11 @@ public class AccessCommandService {
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(projectionIdSuggestions(), builder))
                         .executes(context -> {
                             Identifier id = resolveProjectionIdToken(StringArgumentType.getString(context, "id"));
-                            ProjectionDefinition projection = id == null ? null : ProjectionManager.get(id);
+                            HologramDefinition projection = id == null ? null : HologramManager.get(id);
                             if (projection == null) {
-                                return reply(context.getSource(), "projection=not_found");
+                                return reply(context.getSource(), "hologram=not_found");
                             }
-                            return reply(context.getSource(), "projection=id:" + projection.id() + ",dim:" + projection.dimensionId());
+                            return reply(context.getSource(), "hologram=id:" + projection.id() + ",dim:" + projection.dimensionId());
                         })));
 
         root.then(Commands.literal("delete")
@@ -402,44 +424,44 @@ public class AccessCommandService {
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(projectionIdSuggestions(), builder))
                         .executes(context -> {
                             Identifier id = resolveProjectionIdToken(StringArgumentType.getString(context, "id"));
-                            if (id == null || ProjectionManager.get(id) == null) {
-                                return reply(context.getSource(), "projection=not_found");
+                            if (id == null || HologramManager.get(id) == null) {
+                                return reply(context.getSource(), "hologram=not_found");
                             }
-                            ProjectionManager.unregister(id);
-                            return reply(context.getSource(), "projection=deleted:" + id);
+                            HologramManager.unregister(id);
+                            return reply(context.getSource(), "hologram=deleted:" + id);
                         })));
 
         root.then(Commands.literal("list")
-                .executes(context -> reply(context.getSource(), "projection=count:" + ProjectionManager.all().size())));
+                .executes(context -> reply(context.getSource(), "hologram=count:" + HologramManager.all().size())));
 
         root.then(Commands.literal("visualize")
                 .then(Commands.literal("on")
                         .executes(context -> {
                             if (context.getSource().getPlayer() == null) {
-                                return reply(context.getSource(), "projection=visualize:player_only");
+                                return reply(context.getSource(), "hologram=visualize:player_only");
                             }
                             FieldVisualizationManager.enable(context.getSource().getPlayer().getUUID());
-                            return reply(context.getSource(), "projection=visualize:on");
+                            return reply(context.getSource(), "hologram=visualize:on");
                         }))
                 .then(Commands.literal("off")
                         .executes(context -> {
                             if (context.getSource().getPlayer() == null) {
-                                return reply(context.getSource(), "projection=visualize:player_only");
+                                return reply(context.getSource(), "hologram=visualize:player_only");
                             }
                             var player = context.getSource().getPlayer();
                             FieldVisualizationManager.disable(player.getUUID());
-                            ProjectionNetworking.syncToPlayer(player, List.of());
-                            return reply(context.getSource(), "projection=visualize:off");
+                            HologramNetworking.syncToPlayer(player, List.of());
+                            return reply(context.getSource(), "hologram=visualize:off");
                         }))
                 .then(Commands.literal("status")
                         .executes(context -> {
                             if (context.getSource().getPlayer() == null) {
-                                return reply(context.getSource(), "projection=visualize:player_only");
+                                return reply(context.getSource(), "hologram=visualize:player_only");
                             }
                             var playerId = context.getSource().getPlayer().getUUID();
                             var style = FieldVisualizationManager.getStyle(playerId);
                             boolean enabled = FieldVisualizationManager.isEnabled(playerId);
-                            return reply(context.getSource(), "projection=visualize:" + (enabled ? "on" : "off")
+                            return reply(context.getSource(), "hologram=visualize:" + (enabled ? "on" : "off")
                                     + ",radius=" + FieldVisualizationManager.getRadius(playerId)
                                     + ",points=" + onOff(style.showPoints())
                                     + ",lines=" + onOff(style.showLines())
@@ -451,27 +473,27 @@ public class AccessCommandService {
                         .then(Commands.argument("value", IntegerArgumentType.integer(8, 256))
                                 .executes(context -> {
                                     if (context.getSource().getPlayer() == null) {
-                                        return reply(context.getSource(), "projection=visualize:player_only");
+                                        return reply(context.getSource(), "hologram=visualize:player_only");
                                     }
                                     var playerId = context.getSource().getPlayer().getUUID();
                                     int value = IntegerArgumentType.getInteger(context, "value");
                                     FieldVisualizationManager.setRadius(playerId, value);
-                                    return reply(context.getSource(), "projection=visualize:radius=" + FieldVisualizationManager.getRadius(playerId));
+                                    return reply(context.getSource(), "hologram=visualize:radius=" + FieldVisualizationManager.getRadius(playerId));
                                 })))
                 .then(Commands.literal("show")
                         .then(Commands.argument("feature", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(projectionFeatureSuggestions(), builder))
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(HologramFeatureSuggestions(), builder))
                                 .then(Commands.argument("enabled", StringArgumentType.word())
                                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("on", "off"), builder))
                                         .executes(context -> {
                                             if (context.getSource().getPlayer() == null) {
-                                                return reply(context.getSource(), "projection=visualize:player_only");
+                                                return reply(context.getSource(), "hologram=visualize:player_only");
                                             }
                                             var playerId = context.getSource().getPlayer().getUUID();
-                                            ProjectionFeature feature = ProjectionFeature.parse(StringArgumentType.getString(context, "feature"));
+                                            HologramFeature feature = HologramFeature.parse(StringArgumentType.getString(context, "feature"));
                                             boolean enabled = "on".equalsIgnoreCase(StringArgumentType.getString(context, "enabled"));
                                             FieldVisualizationManager.setFeature(playerId, feature, enabled);
-                                            return reply(context.getSource(), "projection=visualize:show:" + feature.token() + "=" + onOff(enabled));
+                                            return reply(context.getSource(), "hologram=visualize:show:" + feature.token() + "=" + onOff(enabled));
                                         }))))
         );
 
@@ -678,12 +700,14 @@ public class AccessCommandService {
                                 .then(Commands.argument("color", StringArgumentType.word())
                                         .executes(context -> {
                                             Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
+                                            id = toMyulibIdentifier(id.toString());
                                             TeamColor color = parseTeamColor(StringArgumentType.getString(context, "color"));
                                             TeamManager.register(new TeamDefinition(id, Component.literal(id.toString()), color, Map.of()));
                                             return reply(context.getSource(), "team=create:" + id);
                                         }))))
                 .then(Commands.literal("read")
                         .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(teamIdSuggestions(), builder))
                                 .executes(context -> {
                                     Identifier id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
                                     TeamDefinition team = id == null ? null : TeamManager.get(id);
@@ -694,6 +718,7 @@ public class AccessCommandService {
                                 })))
                 .then(Commands.literal("update")
                         .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(teamIdSuggestions(), builder))
                                 .then(Commands.argument("color", StringArgumentType.word())
                                         .executes(context -> {
                                             Identifier id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
@@ -706,6 +731,7 @@ public class AccessCommandService {
                                         }))))
                 .then(Commands.literal("delete")
                         .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(teamIdSuggestions(), builder))
                                 .executes(context -> {
                                     Identifier id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
                                     if (id == null || TeamManager.get(id) == null) {
@@ -722,49 +748,128 @@ public class AccessCommandService {
         dispatcher.register(Commands.literal(COMMAND_PREFIX + "game")
                 .requires(source -> source.permissions().hasPermission(new Permission.HasCommandLevel(PermissionLevel.GAMEMASTERS)))
                 .then(Commands.literal("create")
-                        .then(Commands.argument("id", StringArgumentType.word())
+                        .then(Commands.literal("tictactoe")
+                                .then(Commands.argument("id", StringArgumentType.word())
+                                        .executes(context -> {
+                                            ServerPlayer player = context.getSource().getPlayer();
+                                            if (player == null) {
+                                                return reply(context.getSource(), "game=tictactoe_player_only");
+                                            }
+
+                                            String requestedName = normalizeGameInstanceName(StringArgumentType.getString(context, "id"));
+                                            if (GameManager.resolveInstanceId(requestedName).isPresent()) {
+                                                return reply(context.getSource(), "game=instance_name_exists:" + requestedName);
+                                            }
+
+                                            ensureTicTacToeBlueTeamExists();
+                                            Set<UUID> members = TeamManager.members(TICTACTOE_BLUE_TEAM_ID);
+                                            UUID bluePlayerId;
+                                            if (members.isEmpty()) {
+                                                bluePlayerId = player.getUUID();
+                                                TeamManager.addPlayer(TICTACTOE_BLUE_TEAM_ID, bluePlayerId);
+                                            } else if (members.size() == 1) {
+                                                bluePlayerId = members.iterator().next();
+                                            } else {
+                                                return reply(context.getSource(), "game=tictactoe_blue_must_have_exactly_one_player");
+                                            }
+
+                                            try {
+                                                TicTacToeGameDefinition.TicTacToeConfig config = TicTacToeGameDefinition.TicTacToeConfig.fromStart(player.position(), bluePlayerId);
+                                                GameInstance<?, ?, ?> instance = GameManager.createInstance(TicTacToeGameDefinition.GAME_ID, requestedName, config, context.getSource().getLevel());
+                                                return reply(context.getSource(), "game=tictactoe_created_waiting:" + requestedName + "->" + instance.getInstanceId());
+                                            } catch (Exception ex) {
+                                                return reply(context.getSource(), "game=tictactoe_create_failed:" + ex.getClass().getSimpleName());
+                                            }
+                                        }))))
+                .then(Commands.literal("join")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("gameInstanceId", StringArgumentType.word())
+                                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
+                                        .then(Commands.argument("teamId", StringArgumentType.word())
+                                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(teamIdSuggestions(), builder))
+                                                .executes(context -> {
+                                                    ServerPlayer target = EntityArgument.getPlayer(context, "player");
+                                                    String token = StringArgumentType.getString(context, "gameInstanceId");
+                                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
+                                                    if (instance == null) {
+                                                        return reply(context.getSource(), "game=not_found");
+                                                    }
+                                                    int instanceId = instance.getInstanceId();
+
+                                                    Identifier teamId = resolveTeamIdToken(StringArgumentType.getString(context, "teamId"));
+                                                    if (TeamManager.get(teamId) == null) {
+                                                        return reply(context.getSource(), "game=team_not_found:" + teamId.getPath());
+                                                    }
+
+                                                    if (teamId.equals(TICTACTOE_BLUE_TEAM_ID)) {
+                                                        Set<UUID> members = TeamManager.members(teamId);
+                                                        if (!members.contains(target.getUUID()) && !members.isEmpty()) {
+                                                            return reply(context.getSource(), "game=tictactoe_blue_full");
+                                                        }
+                                                    }
+
+                                                    TeamManager.addPlayer(teamId, target.getUUID());
+                                                    return reply(context.getSource(), "game=joined:" + target.getName().getString() + "->" + teamId.getPath() + "@" + instanceId);
+                                                })))))
+                .then(Commands.literal("start")
+                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
                                 .executes(context -> {
-                                    Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
-                                    if (!GameManager.hasDefinition(id)) {
-                                        return reply(context.getSource(), "game=missing_definition:" + id);
+                                    String token = StringArgumentType.getString(context, "gameInstanceId");
+                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
+                                    if (instance == null) {
+                                        return reply(context.getSource(), "game=not_found");
                                     }
+                                    int instanceId = instance.getInstanceId();
+
                                     try {
-                                        GameInstance<?, ?, ?> instance = GameManager.createInstance(id, GameConfig.empty());
-                                        return reply(context.getSource(), "game=create_instance:" + instance.getInstanceId());
+                                        boolean started = GameManager.startInstance(instanceId);
+                                        return reply(context.getSource(), started
+                                                ? "game=started:" + instanceId
+                                                : "game=already_started_or_not_found");
+                                    } catch (IllegalArgumentException ex) {
+                                        return reply(context.getSource(), "game=start_invalid_config:" + ex.getMessage());
                                     } catch (Exception ex) {
-                                        return reply(context.getSource(), "game=create_failed:" + ex.getClass().getSimpleName());
+                                        return reply(context.getSource(), "game=start_failed:" + ex.getClass().getSimpleName());
                                     }
                                 })))
                 .then(Commands.literal("read")
-                        .then(Commands.argument("instanceId", IntegerArgumentType.integer(1))
+                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
                                 .executes(context -> {
-                                    int instanceId = IntegerArgumentType.getInteger(context, "instanceId");
-                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(instanceId);
+                                    String token = StringArgumentType.getString(context, "gameInstanceId");
+                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
                                     if (instance == null) {
                                         return reply(context.getSource(), "game=not_found");
                                     }
-                                    return reply(context.getSource(), "game=instance:" + instanceId + ",enabled:" + instance.isEnabled());
+                                    int instanceId = instance.getInstanceId();
+                                    return reply(context.getSource(), "game=instance:" + instanceId + ",enabled:" + instance.isEnabled() + ",started:" + instance.isStarted());
                                 })))
                 .then(Commands.literal("update")
-                        .then(Commands.argument("instanceId", IntegerArgumentType.integer(1))
+                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
                                 .executes(context -> {
-                                    int instanceId = IntegerArgumentType.getInteger(context, "instanceId");
-                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(instanceId);
-                                    if (instance == null) {
+                                    String token = StringArgumentType.getString(context, "gameInstanceId");
+                                    if (!GameManager.resetInstance(token)) {
                                         return reply(context.getSource(), "game=not_found");
                                     }
-                                    instance.resetState();
+                                    int instanceId = GameManager.resolveInstanceId(token).orElse(-1);
                                     return reply(context.getSource(), "game=updated:" + instanceId);
                                 })))
                 .then(Commands.literal("delete")
-                        .then(Commands.argument("instanceId", IntegerArgumentType.integer(1))
+                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
                                 .executes(context -> {
-                                    int instanceId = IntegerArgumentType.getInteger(context, "instanceId");
-                                    boolean removed = GameManager.destroyInstance(instanceId);
+                                    String token = StringArgumentType.getString(context, "gameInstanceId");
+                                    int instanceId = GameManager.resolveInstanceId(token).orElse(-1);
+                                    boolean removed = GameManager.destroyInstance(token);
                                     return reply(context.getSource(), removed ? "game=deleted:" + instanceId : "game=not_found");
                                 })))
                 .then(Commands.literal("list")
-                        .executes(context -> reply(context.getSource(), "game=instance_count:" + GameManager.getInstances().size()))));
+                        .executes(context -> {
+                            long started = GameManager.getInstances().stream().filter(GameInstance::isStarted).count();
+                            return reply(context.getSource(), "game=instance_count:" + GameManager.getInstances().size() + ",started=" + started + ",named=" + GameManager.instanceTokens().size());
+                        })));
     }
 
     private static void registerTimerCrud(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -775,6 +880,7 @@ public class AccessCommandService {
                                 .then(Commands.argument("ticks", LongArgumentType.longArg(1L))
                                         .executes(context -> {
                                             Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
+                                            id = toMyulibIdentifier(id.toString());
                                             long ticks = LongArgumentType.getLong(context, "ticks");
                                             TimerManager.register(new TimerDefinition(id, ticks));
                                             TRACKED_TIMERS.add(id);
@@ -782,15 +888,17 @@ public class AccessCommandService {
                                         }))))
                 .then(Commands.literal("read")
                         .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
                                 .executes(context -> {
-                                    Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
+                                    Identifier id = resolveTimerIdToken(StringArgumentType.getString(context, "id"));
                                     return reply(context.getSource(), "timer=exists:" + TimerManager.has(id));
                                 })))
                 .then(Commands.literal("update")
                         .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
                                 .then(Commands.argument("ticks", LongArgumentType.longArg(1L))
                                         .executes(context -> {
-                                            Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
+                                            Identifier id = resolveTimerIdToken(StringArgumentType.getString(context, "id"));
                                             long ticks = LongArgumentType.getLong(context, "ticks");
                                             if (!TimerManager.has(id)) {
                                                 return reply(context.getSource(), "timer=not_found");
@@ -802,8 +910,9 @@ public class AccessCommandService {
                                         }))))
                 .then(Commands.literal("delete")
                         .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
                                 .executes(context -> {
-                                    Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
+                                    Identifier id = resolveTimerIdToken(StringArgumentType.getString(context, "id"));
                                     boolean removed = TimerManager.unregister(id) != null;
                                     TRACKED_TIMERS.remove(id);
                                     return reply(context.getSource(), removed ? "timer=deleted:" + id : "timer=not_found");
@@ -826,7 +935,18 @@ public class AccessCommandService {
 
     private static Identifier resolveFieldIdToken(String token) {
         Identifier fromShort = FieldManager.resolveShortId(token);
-        return fromShort != null ? fromShort : Identifier.parse(token);
+        return fromShort != null ? fromShort : toMyulibIdentifier(token);
+    }
+
+    private static void ensureTicTacToeBlueTeamExists() {
+        if (TeamManager.get(TICTACTOE_BLUE_TEAM_ID) == null) {
+            TeamManager.register(new TeamDefinition(
+                    TICTACTOE_BLUE_TEAM_ID,
+                    Component.literal("TicTacToe Blue"),
+                    TeamColor.BLUE,
+                    Map.of()
+            ));
+        }
     }
 
     private static Identifier resolveRoleGroupIdToken(String token) {
@@ -839,7 +959,19 @@ public class AccessCommandService {
 
     private static Identifier resolveTeamIdToken(String token) {
         Identifier fromShort = TeamManager.resolveShortId(token);
-        return fromShort != null ? fromShort : Identifier.parse(token);
+        return fromShort != null ? fromShort : toMyulibIdentifier(token);
+    }
+
+    private static Identifier resolveTimerIdToken(String token) {
+        Identifier fromPath = TRACKED_TIMERS.stream()
+                .filter(id -> id.getPath().equals(token))
+                .findFirst()
+                .orElse(null);
+        return fromPath != null ? fromPath : toMyulibIdentifier(token);
+    }
+
+    private static String normalizeGameInstanceName(String token) {
+        return token == null ? "" : token.trim().toLowerCase();
     }
 
     private static String saveAll() {
@@ -914,7 +1046,7 @@ public class AccessCommandService {
         return switch (scope) {
             case FIELD -> {
                 Identifier fieldId = PermissionManager.resolveFieldShortId(token);
-                yield fieldId != null ? fieldId : Identifier.parse(token);
+                yield fieldId != null ? fieldId : toMyulibIdentifier(token);
             }
             case DIMENSION -> {
                 Identifier dimId = PermissionManager.resolveDimensionShortId(token);
@@ -990,14 +1122,13 @@ public class AccessCommandService {
         return List.of("edges-only", "full", "labels-only");
     }
 
-    private static List<String> projectionFeatureSuggestions() {
-        return java.util.Arrays.stream(ProjectionFeature.values()).map(ProjectionFeature::token).toList();
+    private static List<String> HologramFeatureSuggestions() {
+        return java.util.Arrays.stream(HologramFeature.values()).map(HologramFeature::token).toList();
     }
 
     private static List<String> projectionIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
-        for (Identifier id : ProjectionManager.all().keySet()) {
-            suggestions.add(id.toString());
+        for (Identifier id : HologramManager.all().keySet()) {
             suggestions.add(id.getPath());
         }
         return List.copyOf(suggestions);
@@ -1009,11 +1140,11 @@ public class AccessCommandService {
         }
         if (!token.contains(":")) {
             Identifier candidate = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, token);
-            if (ProjectionManager.get(candidate) != null) {
+            if (HologramManager.get(candidate) != null) {
                 return candidate;
             }
         }
-        return Identifier.parse(token);
+        return toMyulibIdentifier(token);
     }
 
     private static String onOff(boolean value) {
@@ -1033,7 +1164,6 @@ public class AccessCommandService {
     private static List<String> rolegroupIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         for (RoleGroupDefinition group : RoleGroupManager.groups()) {
-            suggestions.add(group.id().toString());
             suggestions.add(group.id().getPath());
             String shortId = RoleGroupManager.getShortIdOf(group.id());
             if (shortId != null && !shortId.isBlank()) {
@@ -1046,7 +1176,7 @@ public class AccessCommandService {
     private static List<String> fieldIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         for (Identifier id : FieldManager.all().keySet()) {
-            suggestions.add(id.toString());
+            suggestions.add(id.getPath());
             String shortId = FieldManager.getShortIdOf(id);
             if (shortId != null && !shortId.isBlank()) {
                 suggestions.add(shortId);
@@ -1064,11 +1194,24 @@ public class AccessCommandService {
         suggestions.add("everyone");
 
         for (RoleGroupDefinition group : RoleGroupManager.groups()) {
-            suggestions.add(group.id().toString());
-            suggestions.add(PermissionManager.normalizeGroupName(group.id().toString()));
+            suggestions.add(group.id().getPath());
+            suggestions.add(PermissionManager.normalizeGroupName(group.id().getPath()));
         }
 
-        suggestions.addAll(PermissionManager.knownGroupNames());
+        for (String known : PermissionManager.knownGroupNames()) {
+            if (known == null || known.isBlank()) {
+                continue;
+            }
+            if (known.contains(":")) {
+                try {
+                    suggestions.add(Identifier.parse(known).getPath());
+                } catch (Exception ignored) {
+                    suggestions.add(known);
+                }
+                continue;
+            }
+            suggestions.add(known);
+        }
         return List.copyOf(suggestions);
     }
 
@@ -1083,10 +1226,10 @@ public class AccessCommandService {
 
         if (scope == ScopeLayer.DIMENSION) {
             for (FieldDefinition field : FieldManager.all().values()) {
-                suggestions.add(field.dimensionId().toString());
+                suggestions.add(field.dimensionId().getPath());
             }
             for (Identifier id : PermissionManager.dimensionScopeIds()) {
-                suggestions.add(id.toString());
+                suggestions.add(id.getPath());
                 String shortId = PermissionManager.getDimensionShortIdOf(id);
                 if (shortId != null && !shortId.isBlank()) {
                     suggestions.add(shortId);
@@ -1094,14 +1237,14 @@ public class AccessCommandService {
             }
         } else if (scope == ScopeLayer.FIELD) {
             for (Identifier id : FieldManager.all().keySet()) {
-                suggestions.add(id.toString());
+                suggestions.add(id.getPath());
                 String fieldShort = FieldManager.getShortIdOf(id);
                 if (fieldShort != null && !fieldShort.isBlank()) {
                     suggestions.add(fieldShort);
                 }
             }
             for (Identifier id : PermissionManager.fieldScopeIds()) {
-                suggestions.add(id.toString());
+                suggestions.add(id.getPath());
                 String shortId = PermissionManager.getFieldShortIdOf(id);
                 if (shortId != null && !shortId.isBlank()) {
                     suggestions.add(shortId);
@@ -1111,6 +1254,35 @@ public class AccessCommandService {
             suggestions.add("global");
         }
 
+        return List.copyOf(suggestions);
+    }
+
+    private static List<String> timerIdSuggestions() {
+        java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
+        for (Identifier id : TRACKED_TIMERS) {
+            suggestions.add(id.getPath());
+        }
+        return List.copyOf(suggestions);
+    }
+
+    private static List<String> teamIdSuggestions() {
+        java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
+        for (TeamDefinition team : TeamManager.all()) {
+            suggestions.add(team.id().getPath());
+            String shortId = TeamManager.getShortIdOf(team.id());
+            if (shortId != null && !shortId.isBlank()) {
+                suggestions.add(shortId);
+            }
+        }
+        return List.copyOf(suggestions);
+    }
+
+    private static List<String> gameInstanceSuggestions() {
+        java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
+        suggestions.addAll(GameManager.instanceTokens());
+        for (GameInstance<?, ?, ?> instance : GameManager.getInstances()) {
+            suggestions.add(String.valueOf(instance.getInstanceId()));
+        }
         return List.copyOf(suggestions);
     }
 

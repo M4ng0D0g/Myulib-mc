@@ -17,9 +17,6 @@ public abstract class MixinLivingEntityControl {
     @Shadow public float zza; // 前後移動 (Forward)
     @Shadow public float yya; // 上下移動 (通常是飛行/游泳)
     @Shadow public abstract void setJumping(boolean jumping);
-    @Shadow public abstract void setYRot(float yRot);
-    @Shadow public abstract void setXRot(float xRot);
-    @Shadow public abstract void setYHeadRot(float yHeadRot);
 
     /**
      * 在實體計算 AI 和移動前注入。
@@ -35,9 +32,9 @@ public abstract class MixinLivingEntityControl {
 
             if (input != null) {
                 // 1. 🌟 強制同步視角 (讓生物的頭和身體看向玩家滑鼠指的方向)
-                this.setYRot(input.yaw());
-                this.setXRot(input.pitch());
-                this.setYHeadRot(input.yaw());
+                entity.setYRot(input.yaw());
+                entity.setXRot(input.pitch());
+                entity.setYHeadRot(input.yaw());
                 entity.yBodyRot = input.yaw(); // 確保身體也轉過去
 
                 // 2. 🌟 轉換 WASD 為底層移動向量

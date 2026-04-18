@@ -23,7 +23,7 @@ public class EntitySpawnEvent implements FailableEvent {
         return entity;
     }
 
-    public Level getWorld() {
+    public Level getLevel() {
         return Level;
     }
 

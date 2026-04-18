@@ -1,11 +1,12 @@
 package com.myudog.myulib.api.game.object;
 
 public enum GameObjectKind {
-    RESPAWN_POINT,
+    LOGIC, // 邏輯重生點
     MINEABLE,
-    USABLE,
     ATTACKABLE,
-    INTERACTABLE,
+    INTERACTABLE, // 可互動對象 (支援實體、方塊、範圍感應)
+    PROXIMITY_TRIGGER,
+    DECORATIVE,
     CUSTOM
 }
 

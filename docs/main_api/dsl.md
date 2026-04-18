@@ -5,3 +5,6 @@ Primary classes:
 
 Responsibilities:
 - fluent helper API for effect construction pipelines
+
+## Architecture
+- [Architecture diagram (Mermaid)](dsl/architecture.mmd)

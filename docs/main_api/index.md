@@ -11,6 +11,7 @@ Each module has its own sub doc under `docs/main_api/`.
 - [command](command.md)
 - [control](control.md)
 - [core](core.md)
+- [debug](debug.md)
 - [dsl](dsl.md)
 - [dynamics](dynamics.md)
 - [ecs](ecs.md)
@@ -18,6 +19,7 @@ Each module has its own sub doc under `docs/main_api/`.
 - [field](field.md)
 - [floating](floating.md)
 - [game](game.md)
+- [hologram](hologram.md)
 - [permission](permission.md)
 - [rolegroup](rolegroup.md)
 - [shape](shape.md)
@@ -34,3 +36,10 @@ Each module has its own sub doc under `docs/main_api/`.
 - [`MyuVFXManager`](root/MyuVFXManager.md)
 - [`Shapes`](root/Shapes.md)
 - [`VFXCompat`](root/VFXCompat.md)
+
+## Architecture Baseline
+- [`API class architecture (Mermaid)`](diagrams/api-class-architecture.mmd)
+- [`Root API architecture (Mermaid)`](root/architecture.mmd)
+- [`access`](access/architecture.mmd), [`animation`](animation/architecture.mmd), [`camera`](camera/architecture.mmd), [`color`](color/architecture.mmd), [`command`](command/architecture.mmd), [`control`](control/architecture.mmd), [`core`](core/architecture.mmd), [`debug`](debug/architecture.mmd), [`dsl`](dsl/architecture.mmd), [`dynamics`](dynamics/architecture.mmd)
+- [`ecs`](ecs/architecture.mmd), [`event`](event/architecture.mmd), [`field`](field/architecture.mmd), [`floating`](floating/architecture.mmd), [`game`](game/architecture.mmd), [`hologram`](hologram/architecture.mmd), [`permission`](permission/architecture.mmd), [`rolegroup`](rolegroup/architecture.mmd), [`shape`](shape/architecture.mmd), [`storage`](storage/architecture.mmd)
+- [`team`](team/architecture.mmd), [`timer`](timer/architecture.mmd), [`ui`](ui/architecture.mmd), [`util`](util/architecture.mmd)

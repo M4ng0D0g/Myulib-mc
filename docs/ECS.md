@@ -1,7 +1,7 @@
 # ECS 系統使用說明（完整參考）
-本文檔提供專案內 ECS（Entity-Component-System）核心的 Java 版參考：`EcsWorld`、`Component`、`ComponentStorage`、`ComponentAddedEvent`，以及生命週期輔助型別 `Resettable`、`DimensionAware`、`DimensionChangePolicy`、`ComponentLifecycle`。
+本文檔提供專案內 ECS（Entity-Component-System）核心的 Java 版參考：`EcsContainer`、`Component`、`ComponentStorage`、`ComponentAddedEvent`，以及生命週期輔助型別 `Resettable`、`DimensionAware`、`DimensionChangePolicy`、`ComponentLifecycle`。
 ## 概要
-ECS 以資料與行為分離為原則。在本專案中，`EcsWorld` 負責：
+ECS 以資料與行為分離為原則。在本專案中，`EcsContainer` 負責：
 - 建立 entity
 - 存取 component storage
 - 派發 `ComponentAddedEvent`

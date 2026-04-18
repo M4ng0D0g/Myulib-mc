@@ -9,3 +9,6 @@ Primary classes:
 
 Responsibilities:
 - server-side UI bridge contracts and non-client UI state integration points
+
+## Architecture
+- [Architecture diagram (Mermaid)](ui/architecture.mmd)

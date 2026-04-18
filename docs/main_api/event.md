@@ -12,3 +12,6 @@ Primary classes:
 
 Responsibilities:
 - server event abstraction and listener priority dispatch
+
+## Architecture
+- [Architecture diagram (Mermaid)](event/architecture.mmd)

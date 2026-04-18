@@ -1,6 +1,8 @@
 package com.myudog.myulib.mixin;
 
+import com.myudog.myulib.api.debug.DebugTraceManager;
 import com.myudog.myulib.api.permission.PermissionAction;
+import com.myudog.myulib.api.permission.PermissionDecision;
 import com.myudog.myulib.api.permission.PermissionGate;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -16,9 +18,16 @@ public abstract class MixinEntityPortalPermission {
     @Inject(method = "setAsInsidePortal", at = @At("HEAD"), cancellable = true, require = 0)
     private void onEnterPortal(CallbackInfo ci) {
         if ((Object) this instanceof ServerPlayer player) {
-            if (PermissionGate.isDenied(player, PermissionAction.USE_PORTAL, player.position())) {
+            DebugTraceManager.begin(player, "setAsInsidePortal");
+            DebugTraceManager.step(player, "action=" + PermissionAction.USE_PORTAL);
+            PermissionDecision decision = PermissionGate.evaluateDecision(player, PermissionAction.USE_PORTAL, player.position());
+            DebugTraceManager.step(player, "decision=" + decision);
+            if (decision == PermissionDecision.DENY) {
                 ci.cancel();
+                DebugTraceManager.end(player, "result=DENY");
+                return;
             }
+            DebugTraceManager.end(player, "result=ALLOW");
         }
     }
 }

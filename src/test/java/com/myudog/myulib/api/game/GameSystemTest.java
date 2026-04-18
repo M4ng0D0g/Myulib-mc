@@ -3,7 +3,7 @@ import com.myudog.myulib.api.game.core.*;
 import com.myudog.myulib.api.game.object.GameObjectKind;
 import com.myudog.myulib.api.game.state.BasicGameStateMachine;
 import com.myudog.myulib.api.game.state.GameState;
-import com.myudog.myulib.api.game.state.GameStateChangeEvent;
+import com.myudog.myulib.api.game.event.GameStateChangeEvent;
 import com.myudog.myulib.api.game.state.GameStateMachine;
 import com.myudog.myulib.internal.event.EventDispatcherImpl;
 import net.minecraft.resources.Identifier;
@@ -88,7 +88,7 @@ final class GameSystemTest {
         assertTrue(data.scoreboardLines().isEmpty(), "GameData.reset should clear scoreboard lines");
         assertTrue(data.scoreboardValues().isEmpty(), "GameData.reset should clear scoreboard values");
         assertEquals(List.of(
-                GameObjectKind.RESPAWN_POINT,
+                GameObjectKind.LOGIC,
                 GameObjectKind.MINEABLE,
                 GameObjectKind.USABLE,
                 GameObjectKind.ATTACKABLE,

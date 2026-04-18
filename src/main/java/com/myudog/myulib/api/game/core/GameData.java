@@ -1,67 +1,52 @@
 package com.myudog.myulib.api.game.core;
 
-import com.myudog.myulib.api.game.object.IGameEntity;
-import com.myudog.myulib.api.timer.TimerManager;
+import com.myudog.myulib.api.ecs.EcsContainer;
+import com.myudog.myulib.api.game.object.IGameObject;
 import net.minecraft.resources.Identifier;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class GameData {
 
-    // 🌟 核心：移除所有靜態的 ID 生成邏輯，改為依賴注入
-    private Identifier id;
-    private String shortId;
+    private Identifier id; // 由 GameManager 分配的 session ID
 
-    private final Set<Integer> timerInstanceIds = new LinkedHashSet<>();
-    private final Map<Integer, String> timerTags = new LinkedHashMap<>();
-    private final Set<IGameEntity> activeEntities = new LinkedHashSet<>();
-    private final List<String> scoreboardLines = new ArrayList<>();
-    private final Map<String, Integer> scoreboardValues = new LinkedHashMap<>();
+    private final Map<UUID, Integer> participantToEntity = new ConcurrentHashMap<>();
+    private final Map<Identifier, IGameObject> runtimeObjects = new ConcurrentHashMap<>();
+    private final EcsContainer ecsContainer;
 
     protected GameData() {
-        // 建構子不再自行產生 ID，由 GameManager 創建 Instance 時分配
+        this.ecsContainer = new EcsContainer();
     }
 
-    /**
-     * 🌟 供 GameManager 或 Storage 載入時呼叫，注入唯一識別碼
-     */
-    public void setupId(Identifier id, String shortId) {
-        this.id = id;
-        this.shortId = shortId;
+    public void setupId(Identifier id) { this.id = id; }
+    public Identifier getId() { return this.id; }
+
+    // --- 參與者管理 (會話隔離) ---
+
+    public Integer getParticipantEntity(UUID uuid) { return participantToEntity.get(uuid); }
+    public void addParticipant(UUID uuid, int entityId) { participantToEntity.put(uuid, entityId); }
+    public void removeParticipant(UUID uuid) { participantToEntity.remove(uuid); }
+
+    public void addRuntimeObject(Identifier id, IGameObject obj) {
+        this.runtimeObjects.put(id, obj);
     }
 
-    public Identifier getId() {
-        return this.id;
+    public Optional<IGameObject> getObject(Identifier id) {
+        return Optional.ofNullable(runtimeObjects.get(id));
     }
 
-    public String getShortId() {
-        return this.shortId;
+    public Collection<IGameObject> getRuntimeObjects() {
+        return Collections.unmodifiableCollection(runtimeObjects.values());
     }
 
-    public int startNewTimer(String tag, long ticks, Consumer<Integer> onExpire) {
-        int id = TimerManager.start(ticks, onExpire);
-        this.timerInstanceIds.add(id);
-        this.timerTags.put(id, tag);
-        return id;
+    public void reset(GameInstance<?, ?, ?> instance) {
+        participantToEntity.clear();
+
+        runtimeObjects.values().forEach(obj -> obj.destroy(instance));
+        runtimeObjects.clear();
     }
 
-    public void reset() {
-        timerInstanceIds.clear();
-        timerTags.clear();
-        activeEntities.clear();
-        scoreboardLines.clear();
-        scoreboardValues.clear();
+    public EcsContainer getEcsContainer() {
+        return ecsContainer;
     }
-
-    public final Set<Integer> timerInstanceIds() { return timerInstanceIds; }
-    public final Map<Integer, String> timerTags() { return timerTags; }
-    public final Set<IGameEntity> activeEntities() { return activeEntities; }
-    public final List<String> scoreboardLines() { return scoreboardLines; }
-    public final Map<String, Integer> scoreboardValues() { return scoreboardValues; }
 }

@@ -1,6 +1,6 @@
 # ECS component management note
 ## Current public types
-- `EcsWorld`
+- `EcsContainer`
 - `Component`
 - `ComponentAddedEvent`
 - `ComponentLifecycle`

@@ -8,3 +8,6 @@ Primary classes:
 
 Responsibilities:
 - field region registration, collision checks, persistence and short-id mapping
+
+## Architecture
+- [Architecture diagram (Mermaid)](field/architecture.mmd)

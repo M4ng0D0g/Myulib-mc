@@ -2,8 +2,9 @@ package com.myudog.myulib.client.api.field;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.myudog.myulib.Myulib;
-import com.myudog.myulib.api.projection.ProjectionRenderStyle;
-import com.myudog.myulib.api.projection.network.ProjectionNetworking;
+import com.myudog.myulib.api.hologram.HologramDefinition;
+import com.myudog.myulib.api.hologram.HologramStyle;
+import com.myudog.myulib.api.hologram.network.HologramNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -21,7 +22,7 @@ import java.lang.reflect.Modifier;
 
 public final class FieldVisualizationClientRenderer {
     private static final Logger LOGGER = LoggerFactory.getLogger(Myulib.MOD_ID);
-    private static final List<ProjectionNetworking.ProjectionEntry> ACTIVE_ENTRIES = new ArrayList<>();
+    private static final List<HologramDefinition> ACTIVE_ENTRIES = new ArrayList<>();
     private static volatile boolean installed;
 
     private FieldVisualizationClientRenderer() {
@@ -33,8 +34,8 @@ public final class FieldVisualizationClientRenderer {
         }
         installed = true;
 
-        ClientPlayNetworking.registerGlobalReceiver(ProjectionNetworking.ProjectionPayload.TYPE,
-                (payload, context) -> {
+        ClientPlayNetworking.registerGlobalReceiver(HologramNetworking.HologramPayload.TYPE,
+                (HologramNetworking.HologramPayload payload, ClientPlayNetworking.Context context) -> {
                     context.client().execute(() -> {
                         synchronized (ACTIVE_ENTRIES) {
                             ACTIVE_ENTRIES.clear();
@@ -52,6 +53,8 @@ public final class FieldVisualizationClientRenderer {
                 "net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents"
         );
         List<String> fieldNames = List.of(
+                "AFTER_ENTITIES",
+                "LAST",
                 "BEFORE_DEBUG_RENDER",
                 "END_MAIN",
                 "BEFORE_TRANSLUCENT",
@@ -115,11 +118,8 @@ public final class FieldVisualizationClientRenderer {
             return;
         }
 
-        List<ProjectionNetworking.ProjectionEntry> snapshot;
+        List<HologramDefinition> snapshot;
         synchronized (ACTIVE_ENTRIES) {
-            if (ACTIVE_ENTRIES.isEmpty()) {
-                return;
-            }
             snapshot = List.copyOf(ACTIVE_ENTRIES);
         }
 
@@ -130,11 +130,22 @@ public final class FieldVisualizationClientRenderer {
             return;
         }
 
+        AABB fallbackBox = snapshot.isEmpty() ? buildFallbackBox(minecraft) : null;
+        if (snapshot.isEmpty() && fallbackBox == null) {
+            return;
+        }
+
         poseStack.pushPose();
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-        for (ProjectionNetworking.ProjectionEntry entry : snapshot) {
+
+        // Minimal viable guarantee: always render one white translucent region.
+        AABB primary = fallbackBox != null ? fallbackBox : snapshot.getFirst().bounds();
+        invokeLineBox(poseStack, lineBuffer, primary, 1.0f, 1.0f, 1.0f, 1.0f);
+        drawVirtualBlockProjection(poseStack, lineBuffer, primary, 1.0f, 1.0f, 1.0f, 0.35f);
+
+        for (HologramDefinition entry : snapshot) {
             AABB box = entry.bounds();
-            ProjectionRenderStyle style = ProjectionRenderStyle.fromFlags(entry.flags());
+            HologramStyle style = entry.style();
 
             if (style.showLines()) {
                 invokeLineBox(poseStack, lineBuffer, box, 0.2f, 0.95f, 1.0f, 1.0f);
@@ -149,11 +160,26 @@ public final class FieldVisualizationClientRenderer {
                 drawVirtualBlockProjection(poseStack, lineBuffer, box, 0.9f, 0.4f, 1.0f, 0.55f);
             }
             if (style.showName()) {
-                drawNameMarker(minecraft, poseStack, lineBuffer, box, entry.id(), 0.4f, 1.0f, 0.5f, 1.0f);
+                drawNameMarker(minecraft, poseStack, lineBuffer, box, entry.id().toString(), 0.4f, 1.0f, 0.5f, 1.0f);
             }
         }
 
         poseStack.popPose();
+    }
+
+    private static AABB buildFallbackBox(Minecraft minecraft) {
+        if (minecraft.player == null) {
+            return null;
+        }
+        Vec3 center = minecraft.player.position();
+        return new AABB(
+                center.x - 1.5,
+                center.y,
+                center.z - 1.5,
+                center.x + 1.5,
+                center.y + 2.0,
+                center.z + 1.5
+        );
     }
 
     private static PoseStack extractPoseStack(Object context) {

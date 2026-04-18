@@ -4,7 +4,9 @@ import com.myudog.myulib.api.game.state.GameState;
 import com.myudog.myulib.api.game.state.GameStateMachine;
 import com.myudog.myulib.internal.event.EventDispatcherImpl;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 
+import java.util.List;
 import java.util.Objects;
 
 public abstract class GameDefinition<C extends GameConfig, D extends GameData, S extends GameState> {
@@ -37,30 +39,61 @@ public abstract class GameDefinition<C extends GameConfig, D extends GameData, S
     protected abstract EventDispatcherImpl createEventBus();
 
     /**
-     * 核心生命週期：在此處將遊戲邏輯訂閱至房間專屬的 EventBus
+     * 核心生命週期：在此處掛載遊戲行為規則。
      */
-    public abstract void bindBehaviors(GameInstance<C, D, S> instance);
+    protected List<GameBehavior<C, D, S>> gameBehaviors() {
+        return List.of();
+    }
+
+    /**
+     * @deprecated 請改用 gameBehaviors()，保留作相容橋接。
+     */
+    @Deprecated
+    public void bindBehaviors(GameInstance<C, D, S> instance) {
+    }
 
     // --- 主建構流程 (不可被覆寫) ---
 
-    public final GameInstance<C, D, S> createInstance(int instanceId, C config) {
-        C resolvedConfig = Objects.requireNonNull(config, "傳入的 config 不得為空");
+    public final GameInstance<C, D, S> createInstance(int instanceId, C config, ServerLevel level) {
+        try {
+            C resolvedConfig = Objects.requireNonNull(config, "傳入的 config 不得為空");
 
-        // 直接執行驗證 (若有錯會自動拋出 IllegalArgumentException)
-        resolvedConfig.validate();
+            D data = Objects.requireNonNull(createInitialData(resolvedConfig), "createInitialData() 不得回傳 null");
+            GameStateMachine<S> stateMachine = Objects.requireNonNull(createStateMachine(resolvedConfig), "createStateMachine() 不得回傳 null");
 
-        D data = Objects.requireNonNull(createInitialData(resolvedConfig), "createInitialData() 不得回傳 null");
-        GameStateMachine<S> stateMachine = Objects.requireNonNull(createStateMachine(resolvedConfig), "createStateMachine() 不得回傳 null");
+            // 🌟 這裡呼叫 createEventBus() 時，回傳型別與變數宣告現在 100% 吻合了！
+            EventDispatcherImpl eventBus = Objects.requireNonNull(createEventBus(), "createEventBus() 不得回傳 null");
 
-        // 🌟 這裡呼叫 createEventBus() 時，回傳型別與變數宣告現在 100% 吻合了！
-        EventDispatcherImpl eventBus = Objects.requireNonNull(createEventBus(), "createEventBus() 不得回傳 null");
+            // 將 eventBus 注入 GameInstance 建構子
+            GameInstance<C, D, S> instance = new GameInstance<>(instanceId, level, this, resolvedConfig, data, stateMachine, eventBus);
+            return instance;
+        }
+        catch (Exception e) {
+            throw new RuntimeException("創建遊戲實例失敗: " + e.getMessage(), e);
+        }
+    }
 
-        // 將 eventBus 注入 GameInstance 建構子
-        GameInstance<C, D, S> instance = new GameInstance<>(instanceId, this, resolvedConfig, data, stateMachine, eventBus);
+    public final void startInstance(GameInstance<C, D, S> instance) {
+        Objects.requireNonNull(instance, "instance 不得為空");
 
-        // 實例化完成後，自動觸發事件綁定
-        bindBehaviors(instance);
+        if (instance.getDefinition() != this) {
+            throw new IllegalArgumentException("instance 不屬於目前的 definition");
+        }
 
-        return instance;
+        C config = instance.getConfig();
+        config.validate();
+
+        try {
+            instance.initializeRuntimeObjects();
+
+            for (GameBehavior<C, D, S> behavior : gameBehaviors()) {
+                instance.bindBehavior(behavior);
+            }
+
+            bindBehaviors(instance);
+        } catch (Exception e) {
+            instance.getData().reset(instance);
+            throw new RuntimeException("啟動遊戲實例失敗: " + e.getMessage(), e);
+        }
     }
 }

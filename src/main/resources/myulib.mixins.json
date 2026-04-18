@@ -5,10 +5,14 @@
 	"mixins": [
 		"MixinPlayerEntity",
 		"MixinPlayerInteractEntity",
+		"MixinLivingEntity",
 		"MixinPlayerInteractionManager",
+		"MixinLivingEntityControl",
 		"MixinPlayerDropPermission",
 		"MixinItemEntityPermission",
 		"MixinFarmBlockPermission",
+		"MixinPressurePlatePermission",
+		"MixinTripWirePermission",
 		"MixinServerMessagePermission",
 		"MixinEntityPortalPermission"
 	],

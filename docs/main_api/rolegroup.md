@@ -10,3 +10,6 @@ Primary classes:
 Responsibilities:
 - role group definition and assignment management
 - everyone group bootstrap and sorted group resolution for permission pipeline
+
+## Architecture
+- [Architecture diagram (Mermaid)](rolegroup/architecture.mmd)

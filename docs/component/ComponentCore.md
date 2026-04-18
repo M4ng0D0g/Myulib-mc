@@ -1,7 +1,7 @@
 # ECS component overview
 This page points to the current ECS-based component model.
 ## Current public types
-- `EcsWorld`
+- `EcsContainer`
 - `Component`
 - `ComponentAddedEvent`
 - `ComponentLifecycle`

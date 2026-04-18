@@ -6,3 +6,6 @@ Primary classes:
 
 Responsibilities:
 - generic persistence abstraction used by field/permission/rolegroup/team and other systems
+
+## Architecture
+- [Architecture diagram (Mermaid)](storage/architecture.mmd)

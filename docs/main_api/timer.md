@@ -16,3 +16,6 @@ Primary classes:
 Responsibilities:
 - timer definition registry and runtime instance ticking
 - timer lifecycle operations and callback/binding execution
+
+## Architecture
+- [Architecture diagram (Mermaid)](timer/architecture.mmd)

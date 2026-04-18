@@ -19,7 +19,7 @@ Traverses the UI hierarchy and invokes widget `draw` methods. Also renders top-l
 
 Public API
 
-- `fun render(world: EcsWorld, context: DrawContext, mouseX: Int, mouseY: Int, delta: Float)`
+- `fun render(world: EcsContainer, context: DrawContext, mouseX: Int, mouseY: Int, delta: Float)`
   - Drives recursive rendering of all root widgets and the top layer.
 
 Key behaviors

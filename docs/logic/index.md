@@ -7,7 +7,7 @@ A thin compatibility API also exists in `com.myudog.myulib.api.game.logic` for b
 - `com.myudog.myulib.api.game.core.GameInstance`
 - `com.myudog.myulib.api.game.state.GameState`
 - `com.myudog.myulib.api.game.state.GameStateMachine`
-- `com.myudog.myulib.api.game.state.GameStateChangeEvent`
+- `com.myudog.myulib.api.game.event.GameStateChangeEvent`
 - `com.myudog.myulib.api.timer.TimerManager`
 - `com.myudog.myulib.api.timer.TimerModels`
 - `com.myudog.myulib.api.timer.TimerEvents`

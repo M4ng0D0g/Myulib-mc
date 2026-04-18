@@ -12,7 +12,7 @@ Use this page when you need the class-level contract, then follow the field and 
 ECS API
 Public ECS Java types:
 - `com.myudog.myulib.api.ecs.Component`
-- `com.myudog.myulib.api.ecs.EcsWorld`
+- `com.myudog.myulib.api.ecs.EcsContainer`
 - `com.myudog.myulib.internal.ecs.ComponentStorage`
 - `com.myudog.myulib.api.ecs.event.ComponentAddedEvent`
 - `com.myudog.myulib.api.ecs.lifecycle.Resettable`
@@ -21,7 +21,7 @@ Public ECS Java types:
 - `com.myudog.myulib.api.ecs.lifecycle.ComponentLifecycle`
 ## Quick example
 ```java
-EcsWorld world = new EcsWorld();
+EcsContainer container = new EcsContainer();
 int entity = world.createEntity();
 world.addComponent(entity, new TransformComponent());
 ```

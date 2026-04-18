@@ -2,130 +2,121 @@ package com.myudog.myulib.api.game.core;
 
 import com.myudog.myulib.api.debug.DebugFeature;
 import com.myudog.myulib.api.debug.DebugLogManager;
+import com.myudog.myulib.api.ecs.EcsContainer;
+import com.myudog.myulib.api.game.object.IGameObject;
 import com.myudog.myulib.api.game.state.GameState;
 import com.myudog.myulib.api.game.state.GameStateMachine;
-import com.myudog.myulib.api.game.state.GameStateChangeEvent; // 假設的事件類別
-import com.myudog.myulib.api.game.object.GameObjectConfig;
-import com.myudog.myulib.internal.event.EventDispatcherImpl; // 使用具體的派發器實作
+import com.myudog.myulib.api.game.event.GameStateChangeEvent;
+import com.myudog.myulib.internal.event.EventDispatcherImpl;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * 遊戲房間的執行上下文 (Session Context)。
+ * [v0.3.2 改良] 採用 Integer ID 作為唯一互動碼，並與局部 ECS 深度整合。
+ */
 public class GameInstance<C extends GameConfig, D extends GameData, S extends GameState> {
 
-    private final int instanceId;
+    private final int instanceId; // 🌟 唯一整數 ID (玩家互動用，如 /game join 1)
+    private final ServerLevel level;
     private final GameDefinition<C, D, S> definition;
 
-    // C-D-S 核心三本柱
     private final C config;
     private final D data;
     private final GameStateMachine<S> stateMachine;
 
-    // 專屬事件派發器 (確保房間隔離)
+    // 專屬事件派發器 (確保房間間的邏輯完全隔離)
     private final EventDispatcherImpl eventBus;
+    private final List<GameBehavior<C, D, S>> boundBehaviors = new ArrayList<>();
 
     private boolean enabled = true;
+    private boolean started = false;
     private long tickCount = 0;
 
     public GameInstance(
             int instanceId,
+            ServerLevel level,
             GameDefinition<C, D, S> definition,
             C config,
             D data,
             GameStateMachine<S> stateMachine,
-            EventDispatcherImpl eventBus) {
-
+            EventDispatcherImpl eventBus
+    ) {
         this.instanceId = instanceId;
+        this.level = Objects.requireNonNull(level, "level 不得為空");
         this.definition = Objects.requireNonNull(definition, "definition 不得為空");
         this.config = Objects.requireNonNull(config, "config 不得為空");
         this.data = Objects.requireNonNull(data, "data 不得為空");
         this.stateMachine = Objects.requireNonNull(stateMachine, "stateMachine 不得為空");
         this.eventBus = Objects.requireNonNull(eventBus, "eventBus 不得為空");
 
+        // 初始化狀態機
         S current = this.stateMachine.getCurrent();
         if (current != null) {
             current.onEnter(this);
         }
     }
 
-    // --- Getters ---
+    // --- 🌟 核心標識 API ---
+
     public int getInstanceId() { return instanceId; }
-    public GameDefinition<C, D, S> getDefinition() { return definition; }
-    public C getConfig() { return config; }
-    public D getData() { return data; }
-    public GameStateMachine<S> getStateMachine() { return stateMachine; }
-    public EventDispatcherImpl getEventBus() { return eventBus; }
-
-    public boolean isEnabled() { return enabled; }
-    public long getTickCount() { return tickCount; }
-
-    public S getCurrentState() {
-        return stateMachine.getCurrent();
-    }
-
-    // --- 狀態切換邏輯 ---
-
-    public boolean canTransition(S to) {
-        return enabled && stateMachine.canTransition(to);
-    }
 
     /**
-     * 標準狀態切換，會觸發事件
+     * 獲取系統註冊用的完整 Identifier (例如 myulib:session_1)
      */
+    public Identifier getSessionId() { return data.getId(); }
+
+    /**
+     * 🌟 改良：僅需注入系統 ID，不再需要額外的 shortId 字串
+     */
+    public void setupIdentity(Identifier fullId) {
+        this.data.setupId(Objects.requireNonNull(fullId, "fullId 不得為空"));
+    }
+
+    // --- 🌟 局部資料存取橋接 (Bridge API) ---
+
+    public D getData() { return data; }
+
+    /**
+     * 快速存取該局遊戲的局部 ECS 世界
+     */
+    public EcsContainer getEcsContainer() { return data.getEcsContainer(); }
+
+    /**
+     * 檢查玩家是否參與此局遊戲，並取得其在 ECS 中的實體 ID
+     */
+    public Optional<Integer> getParticipantEntity(ServerPlayer player) {
+        return Optional.ofNullable(data.getParticipantEntity(player.getUUID()));
+    }
+
+    public boolean isParticipating(UUID uuid) {
+        return data.getParticipantEntity(uuid) != null;
+    }
+
+    // --- 狀態管理 ---
+
+    public S getCurrentState() { return stateMachine.getCurrent(); }
+
     public boolean transition(S to) {
-        if (!canTransition(to)) {
-            return false;
-        }
+        if (!enabled || !stateMachine.canTransition(to)) return false;
 
         S from = stateMachine.getCurrent();
         if (stateMachine.transitionTo(to)) {
-            if (from != null) {
-                from.onExit(this);
-            }
+            if (from != null) from.onExit(this);
             to.onEnter(this);
-            // 🌟 修正：發送狀態變更事件，讓 bindBehaviors 和 IGameEntity 能夠響應
             eventBus.dispatch(new GameStateChangeEvent<>(this, from, to));
-            DebugLogManager.log(DebugFeature.GAME,
-                    "transition instance=" + instanceId + ",from=" + (from == null ? "-" : from) + ",to=" + to);
+            DebugLogManager.log(DebugFeature.GAME, "instance=" + instanceId + " transition [" + (from == null ? "NONE" : from) + " -> " + to + "]");
             return true;
         }
         return false;
-    }
-
-    /**
-     * 強制切換狀態，無視規則，同樣會觸發事件
-     */
-    public boolean transitionUnsafe(S to) {
-        if (!enabled) return false;
-
-        S from = stateMachine.getCurrent();
-        // 🌟 修正：使用狀態機的強制切換方法
-        if (from != null) {
-            from.onExit(this);
-        }
-        stateMachine.forceTransition(to);
-        to.onEnter(this);
-        eventBus.dispatch(new GameStateChangeEvent<>(this, from, to));
-        DebugLogManager.log(DebugFeature.GAME,
-                "transition-unsafe instance=" + instanceId + ",from=" + (from == null ? "-" : from) + ",to=" + to);
-        return true;
-    }
-
-    public void resetState() {
-        S from = stateMachine.getCurrent();
-        if (from != null) {
-            from.onExit(this);
-        }
-        stateMachine.reset();
-        S current = stateMachine.getCurrent();
-        if (current != null) {
-            current.onEnter(this);
-        }
-        // 重置狀態後通常也需要發送事件通知系統
-        eventBus.dispatch(new GameStateChangeEvent<>(this, from, stateMachine.getCurrent()));
-        DebugLogManager.log(DebugFeature.GAME,
-                "reset-state instance=" + instanceId + ",from=" + (from == null ? "-" : from) + ",to=" + stateMachine.getCurrent());
     }
 
     // --- 生命週期 ---
@@ -139,46 +130,101 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
         }
     }
 
+    /**
+     * 🌟 改良：徹底清理資源
+     */
     public void destroy() {
         if (!enabled) return;
+        this.enabled = false;
+        this.started = false;
+
         S current = stateMachine.getCurrent();
         if (current != null) {
             current.onExit(this);
         }
-        this.enabled = false;
 
-        // 🌟 修正：清理資料，防止實體或資料殘留
-        this.data.reset();
+        for (int i = boundBehaviors.size() - 1; i >= 0; i--) {
+            boundBehaviors.get(i).onUnbind(this);
+        }
+        boundBehaviors.clear();
+
+        // 由 GameData 子類自行擴充跨系統清理（例如 field/team）
+        this.eventBus.clear();
+
+        // 重置資料載體（清空參與者與 runtime objects）
+        this.data.reset(this);
+
         DebugLogManager.log(DebugFeature.GAME, "destroy instance=" + instanceId);
-
-        // 如果您的 EventDispatcherImpl 支援清理所有監聽器，建議在此呼叫
-        // this.eventBus.clearListeners();
     }
 
-    // --- 物件配置委派 (對齊新版 List 結構) ---
+    public boolean isEnabled() { return enabled; }
+    public boolean isStarted() { return started; }
+    public long getTickCount() { return tickCount; }
 
-    /**
-     * 檢查配置中是否定義了特定 ID 的遊戲物件
-     */
-    public boolean hasGameObject(Identifier id) {
-        return config.gameObjects().stream()
-                .anyMatch(obj -> obj.id().equals(id));
+    // --- 配置存取 ---
+    public C getConfig() { return config; }
+    public GameDefinition<C, D, S> getDefinition() { return definition; }
+
+    public Optional<com.myudog.myulib.api.game.object.IGameObject> getGameObject(Identifier id) {
+        return Optional.ofNullable(config.gameObjects().get(id));
     }
 
-    /**
-     * 獲取特定 ID 的物件配置
-     */
-    public Optional<GameObjectConfig<?>> getGameObjectConfig(Identifier id) {
-        return config.gameObjects().stream()
-                .filter(obj -> obj.id().equals(id))
-                .findFirst();
+    public void initializeRuntimeObjects() {
+        Map<Identifier, IGameObject> templates = config.gameObjects();
+        for (Map.Entry<Identifier, IGameObject> entry : templates.entrySet()) {
+            Identifier objectId = entry.getKey();
+            IGameObject template = entry.getValue();
+
+            IGameObject runtime = template.copy();
+            if (runtime == null || !runtime.validate()) {
+                throw new IllegalStateException("無法建立有效遊戲物件副本: " + objectId);
+            }
+
+            data.addRuntimeObject(objectId, runtime);
+            runtime.onInitialize(this);
+            runtime.spawn(this);
+        }
     }
 
-    /**
-     * 強制獲取特定 ID 的物件配置，若不存在則拋出例外
-     */
-    public GameObjectConfig<?> requireGameObjectConfig(Identifier id) {
-        return getGameObjectConfig(id)
-                .orElseThrow(() -> new IllegalStateException("遺失必要的遊戲物件配置: " + id));
+    public void bindBehavior(GameBehavior<C, D, S> behavior) {
+        behavior.onBind(this);
+        boundBehaviors.add(behavior);
+    }
+
+    public boolean start() {
+        if (!enabled || started) {
+            return false;
+        }
+
+        definition.startInstance(this);
+        started = true;
+
+        DebugLogManager.log(DebugFeature.GAME, "start instance=" + instanceId + ",state=" + getCurrentState());
+        return true;
+    }
+
+    public void resetState() {
+        if (!enabled) return;
+
+        S previous = stateMachine.getCurrent();
+        if (previous != null) {
+            previous.onExit(this);
+        }
+
+        stateMachine.reset();
+
+        S current = stateMachine.getCurrent();
+        if (current != null) {
+            current.onEnter(this);
+            eventBus.dispatch(new GameStateChangeEvent<>(this, previous, current));
+        }
+    }
+
+    public ServerLevel getLevel() {
+        return level;
+    }
+
+    public EventDispatcherImpl getEventBus() {
+        return eventBus;
     }
 }

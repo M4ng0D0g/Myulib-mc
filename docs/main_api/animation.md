@@ -13,3 +13,6 @@ Primary classes:
 Responsibilities:
 - describe animation timelines and interpolation
 - bind runtime animation state to ECS/component flows
+
+## Architecture
+- [Architecture diagram (Mermaid)](animation/architecture.mmd)

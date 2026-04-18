@@ -1,7 +1,7 @@
 # main.api.ecs
 
 Primary classes:
-- [`EcsWorld`](ecs/EcsWorld.md)
+- [`EcsContainer`](ecs/EcsContainer.md)
 - [`Component`](ecs/Component.md)
 - [`ComponentSerializer`](ecs/ComponentSerializer.md)
 - [`NbtEcsStorage`](ecs/NbtEcsStorage.md)
@@ -13,3 +13,6 @@ Primary classes:
 
 Responsibilities:
 - ECS storage, lifecycle policies, and component event dispatch
+
+## Architecture
+- [Architecture diagram (Mermaid)](ecs/architecture.mmd)

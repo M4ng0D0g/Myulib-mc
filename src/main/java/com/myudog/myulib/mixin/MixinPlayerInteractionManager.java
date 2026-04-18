@@ -1,6 +1,7 @@
 package com.myudog.myulib.mixin;
 
 import com.myudog.myulib.api.debug.DebugTraceManager;
+import com.myudog.myulib.api.game.core.GameManager;
 import com.myudog.myulib.api.permission.PermissionAction;
 import com.myudog.myulib.api.permission.PermissionDecision;
 import com.myudog.myulib.api.permission.PermissionGate;
@@ -21,6 +22,7 @@ import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.SnowballItem;
 import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.Blocks;
@@ -52,6 +54,13 @@ public class MixinPlayerInteractionManager {
             DebugTraceManager.end(player, "result=DENY");
             return;
         }
+
+        boolean canceled = GameManager.handleBlockBreak(player, pos, this.level);
+        if (canceled) {
+            cir.setReturnValue(false);
+            DebugTraceManager.end(player, "result=GAME_CONSUMED");
+            return;
+        }
         DebugTraceManager.end(player, "result=ALLOW");
     }
 
@@ -72,17 +81,29 @@ public class MixinPlayerInteractionManager {
             DebugTraceManager.end(player, "result=DENY");
             return;
         }
+
+        boolean canceled = GameManager.handleBlockInteract(player, hitResult.getBlockPos(), this.level);
+        if (canceled) {
+            cir.setReturnValue(InteractionResult.SUCCESS);
+            DebugTraceManager.end(player, "result=GAME_CONSUMED");
+            return;
+        }
         DebugTraceManager.end(player, "result=ALLOW");
     }
 
     @Inject(method = "useItem", at = @At("HEAD"), cancellable = true, require = 0)
     private void onUseItem(ServerPlayer player, Level level, ItemStack stack, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir) {
         PermissionAction action = classifyItemAction(stack);
+        ItemStack snapshot = stack.copy();
         DebugTraceManager.begin(player, "useItem");
         DebugTraceManager.step(player, "action=" + action);
         PermissionDecision decision = PermissionGate.evaluateDecision(player, action, player.position());
         DebugTraceManager.step(player, "decision=" + decision);
         if (decision == PermissionDecision.DENY) {
+            // Keep held item unchanged when any item-use permission is denied.
+            player.setItemInHand(hand, snapshot);
+            player.getInventory().setChanged();
+            player.containerMenu.broadcastChanges();
             cir.setReturnValue(InteractionResult.FAIL);
             DebugTraceManager.end(player, "result=DENY");
             return;
@@ -96,6 +117,8 @@ public class MixinPlayerInteractionManager {
         if (stack.getItem() instanceof FlintAndSteelItem || stack.getItem() instanceof FireChargeItem) return PermissionAction.IGNITE_BLOCK;
         if (stack.getItem() instanceof SpawnEggItem) return PermissionAction.USE_SPAWN_EGG;
 
+        // Door open/close is regular block interaction, not redstone trigger.
+        if (state.getBlock() instanceof DoorBlock) return PermissionAction.INTERACT_BLOCK;
         if (state.hasBlockEntity()) return PermissionAction.OPEN_CONTAINER;
         if (state.hasProperty(BlockStateProperties.POWERED)) return PermissionAction.TRIGGER_REDSTONE;
         if (state.is(Blocks.NETHER_PORTAL) || state.is(Blocks.END_PORTAL) || state.is(Blocks.END_GATEWAY)) {

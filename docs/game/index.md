@@ -1,5 +1,9 @@
 # Game System
 
+![Game API Class Architecture](../../src/main/java/com/myudog/myulib/api/game/architecture.mmd)
+
+[Open Mermaid source](../../src/main/java/com/myudog/myulib/api/game/architecture.mmd)
+
 `com.myudog.myulib.api.game` is the public entry point for game definition registration and instance lifecycle.
 
 ## Core types

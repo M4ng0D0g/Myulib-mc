@@ -14,7 +14,7 @@ The Event system provides event creation, dispatch, and subscription for cross-s
 
 ## 目前進度
 - ✅ 事件核心 API 已整理到 canonical `docs/event/`。
-- ✅ `EcsWorld.eventBus` / game logic 的事件流已在文件中標示。
+- ✅ `EcsContainer.eventBus` / game logic 的事件流已在文件中標示。
 - ⏳ 若之後新增更多事件型別，會再補對應的 class 頁與進度註記。
 
 ## Public class navigation list

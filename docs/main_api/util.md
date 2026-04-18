@@ -8,3 +8,6 @@ Primary classes:
 Responsibilities:
 - short-id generation/binding utilities
 - NBT IO helper utilities used by storage layers
+
+## Architecture
+- [Architecture diagram (Mermaid)](util/architecture.mmd)

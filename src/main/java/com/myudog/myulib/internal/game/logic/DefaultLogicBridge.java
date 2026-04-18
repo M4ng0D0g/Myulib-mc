@@ -1,10 +1,10 @@
 package com.myudog.myulib.internal.game.logic;
 
-import com.myudog.myulib.api.game.state.GameState;
-
-import com.myudog.myulib.api.game.logic.LogicContracts;
-import com.myudog.myulib.api.game.logic.LogicEngine;
-
+/**
+ * @deprecated game.logic 已移除。此橋接保留作相容空殼。
+ */
+@Deprecated
 public class DefaultLogicBridge {
-    public static <S extends GameState> void register(LogicEngine<S> engine, LogicContracts.LogicRule<S> rule) { engine.register(rule); }
+    private DefaultLogicBridge() {
+    }
 }

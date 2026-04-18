@@ -11,3 +11,6 @@ Primary classes:
 
 Responsibilities:
 - team registration, membership mapping, and game-scoped team IDs
+
+## Architecture
+- [Architecture diagram (Mermaid)](team/architecture.mmd)

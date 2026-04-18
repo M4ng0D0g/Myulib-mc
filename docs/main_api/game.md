@@ -20,3 +20,6 @@ Primary classes:
 Responsibilities:
 - game definition registry and runtime instance lifecycle
 - game state transitions and object/config dispatch
+
+## Architecture
+- [Architecture diagram (Mermaid)](game/architecture.mmd)

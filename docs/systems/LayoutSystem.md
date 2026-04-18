@@ -8,7 +8,7 @@ Responsible for measuring and calculating layout (positions and sizes) for all U
 
 Public API
 
-- `fun update(world: EcsWorld, screenW: Float, screenH: Float)`
+- `fun update(world: EcsContainer, screenW: Float, screenH: Float)`
   - Starts layout pass: finds root entities and runs `measureRecursive` and `calculateRecursive`.
 
 Key behaviors
