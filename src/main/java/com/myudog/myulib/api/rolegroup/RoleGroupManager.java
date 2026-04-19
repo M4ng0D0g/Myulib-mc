@@ -61,12 +61,20 @@ public final class RoleGroupManager {
     }
 
     public static RoleGroupDefinition register(RoleGroupDefinition group) {
+        if (!validate(group)) {
+            throw new IllegalArgumentException("RoleGroupDefinition 驗證失敗: " + (group == null ? "null" : group.id()));
+        }
+
         GROUPS.put(group.id(), group);
         String shortId = ID_REGISTRY.generateAndBind(group.id());
         DebugLogManager.log(DebugFeature.ROLEGROUP,
                 "register id=" + group.id() + ",shortId=" + shortId + ",priority=" + group.priority());
         if (storage != null) storage.saveGroup(group);
         return group;
+    }
+
+    public static boolean validate(RoleGroupDefinition group) {
+        return group != null && group.id() != null && !GROUPS.containsKey(group.id());
     }
 
     public static RoleGroupDefinition update(Identifier groupId, UnaryOperator<RoleGroupDefinition> updater) {

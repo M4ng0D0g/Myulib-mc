@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.game.object.impl;
 
 import com.myudog.myulib.api.game.object.GameObjectKind;
-import com.myudog.myulib.api.game.object.GameObjectProperty;
+import com.myudog.myulib.api.core.Property;
 import com.myudog.myulib.api.game.object.IGameObject;
 import com.myudog.myulib.api.game.object.behavior.MineableBehavior;
 import net.minecraft.resources.Identifier;
@@ -13,7 +13,7 @@ import net.minecraft.resources.Identifier;
 public class MineableObject extends BlockGameObject {
 
     // 🌟 擴充自訂屬性：挖掘獎勵經驗值 (你可以自行替換為 ECS 資源組件)
-    public static final GameObjectProperty<Integer> REWARD_EXP = new GameObjectProperty<>(
+    public static final Property<Integer> REWARD_EXP = new Property<>(
             "reward_exp",
             Integer.class,
             Integer::parseInt

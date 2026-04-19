@@ -7,6 +7,8 @@ import com.myudog.myulib.api.storage.DataStorage;
 import com.myudog.myulib.api.team.storage.NbtTeamStorage;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
@@ -27,6 +29,7 @@ public final class TeamManager {
     private static final Map<UUID, Identifier> PLAYER_TEAM = new LinkedHashMap<>();
     private static final Map<Identifier, Identifier> TEAM_GAME_IDS = new LinkedHashMap<>();
     private static final ShortIdRegistry ID_REGISTRY = new ShortIdRegistry(6);
+    private static MinecraftServer currentServer;
 
     // 🌟 儲存庫實例
     private static DataStorage<Identifier, TeamDefinition> storage;
@@ -46,6 +49,7 @@ public final class TeamManager {
 
         // 掛載伺服器啟動事件，初始化儲存庫並載入所有資料
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+            currentServer = server;
             if (storage != null) {
                 storage.initialize(server);
 
@@ -59,13 +63,19 @@ public final class TeamManager {
                         ID_REGISTRY.generateAndBind(id);
                     }
                 }
+                syncAllNativeTeams(server);
                 System.out.println("[Myulib] TeamManager 已成功載入 " + TEAMS.size() + " 筆隊伍資料。");
             }
         });
+
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> currentServer = null);
     }
 
     public static TeamDefinition register(TeamDefinition team) {
         Objects.requireNonNull(team, "team");
+        if (!validate(team)) {
+            throw new IllegalArgumentException("TeamDefinition 驗證失敗: " + team.id());
+        }
         TEAMS.put(team.id(), team);
         String shortId = ID_REGISTRY.generateAndBind(team.id());
         TEAM_MEMBERS.computeIfAbsent(team.id(), ignored -> new LinkedHashSet<>());
@@ -79,7 +89,13 @@ public final class TeamManager {
         DebugLogManager.log(DebugFeature.TEAM,
                 "register id=" + team.id() + ",shortId=" + shortId + ",color=" + team.color());
 
+        syncNativeTeam(currentServer, team.id());
+
         return team;
+    }
+
+    public static boolean validate(TeamDefinition team) {
+        return team != null && team.id() != null && team.playerLimit() >= 0 && !TEAMS.containsKey(team.id());
     }
 
     public static TeamDefinition register(Identifier gameId, TeamDefinition team) {
@@ -87,7 +103,10 @@ public final class TeamManager {
         Objects.requireNonNull(team, "team");
 
         Identifier scopedId = scopedTeamId(gameId, team.id());
-        TeamDefinition scoped = new TeamDefinition(scopedId, team.translationKey(), team.color(), team.flags());
+        if (TEAMS.containsKey(scopedId)) {
+            throw new IllegalArgumentException("TeamDefinition scoped id 已存在: " + scopedId);
+        }
+        TeamDefinition scoped = new TeamDefinition(scopedId, team.translationKey(), team.color(), team.flags(), team.playerLimit());
 
         TEAMS.put(scoped.id(), scoped);
         String shortId = ID_REGISTRY.generateAndBind(scoped.id());
@@ -101,6 +120,8 @@ public final class TeamManager {
 
         DebugLogManager.log(DebugFeature.TEAM,
                 "register scoped id=" + scoped.id() + ",shortId=" + shortId + ",game=" + gameId + ",color=" + scoped.color());
+
+        syncNativeTeam(currentServer, scoped.id());
 
         return scoped;
     }
@@ -123,6 +144,8 @@ public final class TeamManager {
         DebugLogManager.log(DebugFeature.TEAM,
                 "update id=" + teamId + ",color=" + updated.color());
 
+        syncNativeTeam(currentServer, teamId);
+
         return updated;
     }
 
@@ -141,7 +164,9 @@ public final class TeamManager {
         DebugLogManager.log(DebugFeature.TEAM,
                 "unregister id=" + teamId + ",shortId=" + ID_REGISTRY.getShortId(teamId));
 
-        return TEAMS.remove(teamId);
+        TeamDefinition removed = TEAMS.remove(teamId);
+        removeNativeTeam(currentServer, teamId);
+        return removed;
     }
 
     public static List<TeamDefinition> unregisterGame(Identifier gameId) {
@@ -187,6 +212,12 @@ public final class TeamManager {
         if (!TEAMS.containsKey(teamId) || playerId == null) {
             return false;
         }
+        TeamDefinition team = TEAMS.get(teamId);
+        Set<UUID> teamMembers = TEAM_MEMBERS.computeIfAbsent(teamId, ignored -> new LinkedHashSet<>());
+        if (!teamMembers.contains(playerId) && team.playerLimit() > 0 && teamMembers.size() >= team.playerLimit()) {
+            return false;
+        }
+
         Identifier previous = PLAYER_TEAM.put(playerId, teamId);
         if (previous != null && !previous.equals(teamId)) {
             Set<UUID> previousMembers = TEAM_MEMBERS.get(previous);
@@ -194,7 +225,11 @@ public final class TeamManager {
                 previousMembers.remove(playerId);
             }
         }
-        TEAM_MEMBERS.computeIfAbsent(teamId, ignored -> new LinkedHashSet<>()).add(playerId);
+        teamMembers.add(playerId);
+        if (previous != null && !previous.equals(teamId)) {
+            removeNativePlayerMember(currentServer, previous, playerId);
+        }
+        addNativePlayerMember(currentServer, teamId, playerId);
         DebugLogManager.log(DebugFeature.TEAM,
                 "add player=" + playerId + " -> team=" + teamId + (previous != null ? ",previous=" + previous : ""));
         return true;
@@ -209,6 +244,7 @@ public final class TeamManager {
         if (members != null) {
             members.remove(playerId);
         }
+        removeNativePlayerMember(currentServer, teamId, playerId);
         DebugLogManager.log(DebugFeature.TEAM,
                 "remove player=" + playerId + " from team=" + teamId);
         return true;
@@ -266,10 +302,199 @@ public final class TeamManager {
     }
 
     public static void clear() {
+        if (currentServer != null) {
+            for (Identifier teamId : Set.copyOf(TEAMS.keySet())) {
+                removeNativeTeam(currentServer, teamId);
+            }
+        }
         TEAMS.clear();
         TEAM_MEMBERS.clear();
         PLAYER_TEAM.clear();
         TEAM_GAME_IDS.clear();
         ID_REGISTRY.clear();
+    }
+
+    private static void syncAllNativeTeams(MinecraftServer server) {
+        if (server == null) {
+            return;
+        }
+        for (Identifier teamId : TEAMS.keySet()) {
+            syncNativeTeam(server, teamId);
+        }
+    }
+
+    private static void syncNativeTeam(MinecraftServer server, Identifier teamId) {
+        if (server == null || teamId == null) {
+            return;
+        }
+
+        TeamDefinition definition = TEAMS.get(teamId);
+        if (definition == null) {
+            return;
+        }
+
+        Object scoreboard = server.getScoreboard();
+        Object nativeTeam = getOrCreateNativeTeam(scoreboard, teamKey(teamId));
+        if (nativeTeam == null) {
+            return;
+        }
+
+        invokeIfPresent(nativeTeam, "setDisplayName", definition.translationKey());
+        invokeIfPresent(nativeTeam, "setColor", definition.color().toChatFormatting());
+        invokeIfPresent(nativeTeam, "setAllowFriendlyFire", flagOrDefault(definition, TeamFlag.FRIENDLY_FIRE, true));
+        invokeIfPresent(nativeTeam, "setSeeFriendlyInvisibles", flagOrDefault(definition, TeamFlag.SEE_INVISIBLES, false));
+
+        for (UUID memberId : TEAM_MEMBERS.getOrDefault(teamId, Set.of())) {
+            String entry = resolveScoreboardEntry(server, memberId);
+            invokeIfPresent(scoreboard, "addPlayerToTeam", entry, nativeTeam);
+        }
+    }
+
+    private static void removeNativeTeam(MinecraftServer server, Identifier teamId) {
+        if (server == null || teamId == null) {
+            return;
+        }
+        Object scoreboard = server.getScoreboard();
+        Object nativeTeam = invoke(scoreboard, "getPlayerTeam", teamKey(teamId));
+        if (nativeTeam != null) {
+            invokeIfPresent(scoreboard, "removePlayerTeam", nativeTeam);
+        }
+    }
+
+    private static void addNativePlayerMember(MinecraftServer server, Identifier teamId, UUID playerId) {
+        if (server == null || teamId == null || playerId == null) {
+            return;
+        }
+        Object scoreboard = server.getScoreboard();
+        Object nativeTeam = getOrCreateNativeTeam(scoreboard, teamKey(teamId));
+        if (nativeTeam == null) {
+            return;
+        }
+        invokeIfPresent(scoreboard, "addPlayerToTeam", resolveScoreboardEntry(server, playerId), nativeTeam);
+    }
+
+    private static void removeNativePlayerMember(MinecraftServer server, Identifier teamId, UUID playerId) {
+        if (server == null || teamId == null || playerId == null) {
+            return;
+        }
+        Object scoreboard = server.getScoreboard();
+        Object nativeTeam = invoke(scoreboard, "getPlayerTeam", teamKey(teamId));
+        if (nativeTeam == null) {
+            return;
+        }
+        String entry = resolveScoreboardEntry(server, playerId);
+        if (!invokeIfPresent(scoreboard, "removePlayerFromTeam", entry, nativeTeam)) {
+            invokeIfPresent(scoreboard, "removePlayerFromTeam", entry);
+        }
+    }
+
+    private static Object getOrCreateNativeTeam(Object scoreboard, String teamKey) {
+        Object nativeTeam = invoke(scoreboard, "getPlayerTeam", teamKey);
+        if (nativeTeam != null) {
+            return nativeTeam;
+        }
+        return invoke(scoreboard, "addPlayerTeam", teamKey);
+    }
+
+    private static String resolveScoreboardEntry(MinecraftServer server, UUID playerId) {
+        ServerPlayer online = server.getPlayerList().getPlayer(playerId);
+        if (online != null) {
+            return online.getScoreboardName();
+        }
+        return playerId.toString();
+    }
+
+    private static boolean flagOrDefault(TeamDefinition definition, TeamFlag flag, boolean fallback) {
+        Boolean value = definition.flags().get(flag);
+        return value == null ? fallback : value;
+    }
+
+    private static String teamKey(Identifier id) {
+        return id.toString();
+    }
+
+    private static Object invoke(Object target, String method, Object... args) {
+        if (target == null) {
+            return null;
+        }
+        try {
+            for (var candidate : target.getClass().getMethods()) {
+                if (!candidate.getName().equals(method) || candidate.getParameterCount() != args.length) {
+                    continue;
+                }
+                if (isCompatible(candidate.getParameterTypes(), args)) {
+                    return candidate.invoke(target, args);
+                }
+            }
+        } catch (ReflectiveOperationException ignored) {
+        }
+        return null;
+    }
+
+    private static boolean invokeIfPresent(Object target, String method, Object... args) {
+        if (target == null) {
+            return false;
+        }
+        try {
+            for (var candidate : target.getClass().getMethods()) {
+                if (!candidate.getName().equals(method) || candidate.getParameterCount() != args.length) {
+                    continue;
+                }
+                if (isCompatible(candidate.getParameterTypes(), args)) {
+                    candidate.invoke(target, args);
+                    return true;
+                }
+            }
+        } catch (ReflectiveOperationException ignored) {
+        }
+        return false;
+    }
+
+    private static boolean isCompatible(Class<?>[] parameterTypes, Object[] args) {
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Object arg = args[i];
+            if (arg == null) {
+                if (parameterTypes[i].isPrimitive()) {
+                    return false;
+                }
+                continue;
+            }
+            Class<?> expected = wrapPrimitive(parameterTypes[i]);
+            if (!expected.isInstance(arg)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Class<?> wrapPrimitive(Class<?> type) {
+        if (!type.isPrimitive()) {
+            return type;
+        }
+        if (type == boolean.class) {
+            return Boolean.class;
+        }
+        if (type == int.class) {
+            return Integer.class;
+        }
+        if (type == long.class) {
+            return Long.class;
+        }
+        if (type == double.class) {
+            return Double.class;
+        }
+        if (type == float.class) {
+            return Float.class;
+        }
+        if (type == short.class) {
+            return Short.class;
+        }
+        if (type == byte.class) {
+            return Byte.class;
+        }
+        if (type == char.class) {
+            return Character.class;
+        }
+        return type;
     }
 }

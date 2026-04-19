@@ -12,12 +12,14 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 遊戲房間的執行上下文 (Session Context)。
@@ -29,15 +31,18 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
     private final ServerLevel level;
     private final GameDefinition<C, D, S> definition;
 
-    private final C config;
-    private final D data;
+    private Identifier sessionId;
+    private C config;
+    private D data;
     private final GameStateMachine<S> stateMachine;
+    private UUID hostUuid;
 
     // 專屬事件派發器 (確保房間間的邏輯完全隔離)
     private final EventDispatcherImpl eventBus;
     private final List<GameBehavior<C, D, S>> boundBehaviors = new ArrayList<>();
 
     private boolean enabled = true;
+    private boolean initialized = false;
     private boolean started = false;
     private long tickCount = 0;
 
@@ -46,7 +51,6 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
             ServerLevel level,
             GameDefinition<C, D, S> definition,
             C config,
-            D data,
             GameStateMachine<S> stateMachine,
             EventDispatcherImpl eventBus
     ) {
@@ -54,7 +58,6 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
         this.level = Objects.requireNonNull(level, "level 不得為空");
         this.definition = Objects.requireNonNull(definition, "definition 不得為空");
         this.config = Objects.requireNonNull(config, "config 不得為空");
-        this.data = Objects.requireNonNull(data, "data 不得為空");
         this.stateMachine = Objects.requireNonNull(stateMachine, "stateMachine 不得為空");
         this.eventBus = Objects.requireNonNull(eventBus, "eventBus 不得為空");
 
@@ -72,33 +75,103 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
     /**
      * 獲取系統註冊用的完整 Identifier (例如 myulib:session_1)
      */
-    public Identifier getSessionId() { return data.getId(); }
+    public Identifier getSessionId() { return sessionId; }
 
     /**
      * 🌟 改良：僅需注入系統 ID，不再需要額外的 shortId 字串
      */
     public void setupIdentity(Identifier fullId) {
-        this.data.setupId(Objects.requireNonNull(fullId, "fullId 不得為空"));
+        this.sessionId = Objects.requireNonNull(fullId, "fullId 不得為空");
+        if (this.data != null) {
+            this.data.setupId(fullId);
+        }
     }
 
     // --- 🌟 局部資料存取橋接 (Bridge API) ---
 
-    public D getData() { return data; }
+    public D getData() {
+        if (data == null) {
+            throw new IllegalStateException("GameData 尚未建立，請先 start() 成功後再取得");
+        }
+        return data;
+    }
 
     /**
      * 快速存取該局遊戲的局部 ECS 世界
      */
-    public EcsContainer getEcsContainer() { return data.getEcsContainer(); }
+    public EcsContainer getEcsContainer() { return getData().getEcsContainer(); }
 
     /**
      * 檢查玩家是否參與此局遊戲，並取得其在 ECS 中的實體 ID
      */
     public Optional<Integer> getParticipantEntity(ServerPlayer player) {
+        if (data == null) {
+            return Optional.empty();
+        }
         return Optional.ofNullable(data.getParticipantEntity(player.getUUID()));
     }
 
     public boolean isParticipating(UUID uuid) {
+        if (data == null) {
+            return false;
+        }
         return data.getParticipantEntity(uuid) != null;
+    }
+
+    public Optional<UUID> getHostUuid() {
+        return Optional.ofNullable(hostUuid);
+    }
+
+    public void setHostUuid(UUID hostUuid) {
+        this.hostUuid = hostUuid;
+    }
+
+    public void clearHostUuid() {
+        this.hostUuid = null;
+    }
+
+    public Map<Identifier, Set<UUID>> getTeamMembersSnapshot() {
+        if (data == null) {
+            return Collections.emptyMap();
+        }
+        return data.teamMembersSnapshot();
+    }
+
+    public Set<UUID> getTeamMembers(Identifier teamId) {
+        if (teamId == null || data == null) {
+            return Set.of();
+        }
+        return data.membersOf(teamId);
+    }
+
+    public Optional<Identifier> getPlayerTeam(UUID playerUuid) {
+        if (playerUuid == null || data == null) {
+            return Optional.empty();
+        }
+        return data.teamOf(playerUuid);
+    }
+
+    public boolean joinPlayer(UUID playerUuid) {
+        return joinPlayer(playerUuid, null);
+    }
+
+    public boolean joinPlayer(UUID playerUuid, Identifier requestedTeamId) {
+        if (playerUuid == null || data == null) {
+            return false;
+        }
+
+        if (started && !config.allowSpectating() && !data.containsPlayer(playerUuid)) {
+            throw new IllegalStateException("遊戲已開始，不允許觀戰加入");
+        }
+
+        Identifier decidedTeam = definition.resolveTeamForJoin(this, playerUuid, requestedTeamId);
+        Identifier targetTeam = resolveJoinTeam(decidedTeam, requestedTeamId);
+
+        if (!data.containsPlayer(playerUuid) && !GameConfig.SPECTATOR_TEAM_ID.equals(targetTeam) && data.countActivePlayers() >= config.maxPlayer()) {
+            throw new IllegalStateException("房間已滿: maxPlayer=" + config.maxPlayer());
+        }
+
+        return data.movePlayerToTeam(playerUuid, targetTeam, config);
     }
 
     // --- 狀態管理 ---
@@ -136,6 +209,7 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
     public void destroy() {
         if (!enabled) return;
         this.enabled = false;
+        this.initialized = false;
         this.started = false;
 
         S current = stateMachine.getCurrent();
@@ -152,24 +226,42 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
         this.eventBus.clear();
 
         // 重置資料載體（清空參與者與 runtime objects）
-        this.data.reset(this);
+        if (this.data != null) {
+            this.data.reset(this);
+            this.data = null;
+        }
+        this.hostUuid = null;
 
         DebugLogManager.log(DebugFeature.GAME, "destroy instance=" + instanceId);
     }
 
     public boolean isEnabled() { return enabled; }
+    public boolean isInitialized() { return initialized; }
     public boolean isStarted() { return started; }
     public long getTickCount() { return tickCount; }
 
     // --- 配置存取 ---
     public C getConfig() { return config; }
+
+    public void setConfig(C config) {
+        if (initialized) {
+            throw new IllegalStateException("遊戲已初始化，無法再次設定 config");
+        }
+        this.config = Objects.requireNonNull(config, "config 不得為空");
+    }
     public GameDefinition<C, D, S> getDefinition() { return definition; }
 
     public Optional<com.myudog.myulib.api.game.object.IGameObject> getGameObject(Identifier id) {
+        if (config == null) {
+            return Optional.empty();
+        }
         return Optional.ofNullable(config.gameObjects().get(id));
     }
 
     public void initializeRuntimeObjects() {
+        if (config == null) {
+            throw new IllegalStateException("尚未設定 config，無法初始化 runtime objects");
+        }
         Map<Identifier, IGameObject> templates = config.gameObjects();
         for (Map.Entry<Identifier, IGameObject> entry : templates.entrySet()) {
             Identifier objectId = entry.getKey();
@@ -191,15 +283,84 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
         boundBehaviors.add(behavior);
     }
 
+    public boolean init() {
+        if (!enabled || initialized) {
+            return false;
+        }
+
+        if (config == null) {
+            throw new IllegalStateException("尚未設定 config");
+        }
+        if (!config.validate()) {
+            throw new IllegalArgumentException("config.validate() 回傳 false");
+        }
+
+        D createdData = Objects.requireNonNull(definition.createInitialData(config), "createInitialData() 不得回傳 null");
+        if (sessionId != null) {
+            createdData.setupId(sessionId);
+        }
+
+        try {
+            this.data = createdData;
+            createdData.init(config);
+            initializeRuntimeObjects();
+
+            for (GameBehavior<C, D, S> behavior : definition.gameBehaviors()) {
+                bindBehavior(behavior);
+            }
+            definition.bindBehaviors(this);
+
+            initialized = true;
+            DebugLogManager.log(DebugFeature.GAME, "init instance=" + instanceId + ",state=" + getCurrentState());
+            return true;
+        } catch (Exception e) {
+            initialized = false;
+            started = false;
+            for (int i = boundBehaviors.size() - 1; i >= 0; i--) {
+                boundBehaviors.get(i).onUnbind(this);
+            }
+            boundBehaviors.clear();
+            if (this.data != null) {
+                this.data.reset(this);
+                this.data = null;
+            }
+            throw new RuntimeException("初始化遊戲實例失敗: " + e.getMessage(), e);
+        }
+    }
+
     public boolean start() {
         if (!enabled || started) {
             return false;
         }
 
-        definition.startInstance(this);
-        started = true;
+        if (!initialized && !init()) {
+            return false;
+        }
 
-        DebugLogManager.log(DebugFeature.GAME, "start instance=" + instanceId + ",state=" + getCurrentState());
+        try {
+            definition.onStart(this);
+            started = true;
+
+            DebugLogManager.log(DebugFeature.GAME, "start instance=" + instanceId + ",state=" + getCurrentState());
+            return true;
+        } catch (Exception e) {
+            started = false;
+            throw new RuntimeException("啟動遊戲實例失敗: " + e.getMessage(), e);
+        }
+    }
+
+    public boolean end() {
+        if (!enabled) {
+            return false;
+        }
+
+        try {
+            definition.onEnd(this);
+        } catch (Exception e) {
+            throw new RuntimeException("強制結束遊戲失敗: " + e.getMessage(), e);
+        }
+
+        destroy();
         return true;
     }
 
@@ -226,5 +387,18 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends Ga
 
     public EventDispatcherImpl getEventBus() {
         return eventBus;
+    }
+
+    private Identifier resolveJoinTeam(Identifier decidedTeam, Identifier requestedTeamId) {
+        if (started) {
+            return GameConfig.SPECTATOR_TEAM_ID;
+        }
+        if (decidedTeam != null && data.isTeamRegistered(decidedTeam)) {
+            return decidedTeam;
+        }
+        if (requestedTeamId != null && data.isTeamRegistered(requestedTeamId)) {
+            return requestedTeamId;
+        }
+        return GameConfig.SPECTATOR_TEAM_ID;
     }
 }

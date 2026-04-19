@@ -30,8 +30,17 @@ public final class TimerDefinition {
 
     public TimerDefinition onElapsedTick(long tick, TimerAction action) { return onElapsedTick(tick, action, false); }
     public TimerDefinition onRemainingTick(long tick, TimerAction action) { return onRemainingTick(tick, action, false); }
-    public TimerDefinition onElapsedTick(long tick, TimerAction action, boolean replace) { return addBinding(elapsedBindings, tick, TimerTickBasis.ELAPSED, action, replace); }
-    public TimerDefinition onRemainingTick(long tick, TimerAction action, boolean replace) { return addBinding(remainingBindings, tick, TimerTickBasis.REMAINING, action, replace); }
+    public TimerDefinition onElapsedTick(long tick, TimerAction action, boolean replace) { return addBinding(elapsedBindings, Set.of(tick), TimerTickBasis.ELAPSED, action, replace); }
+    public TimerDefinition onRemainingTick(long tick, TimerAction action, boolean replace) { return addBinding(remainingBindings, Set.of(tick), TimerTickBasis.REMAINING, action, replace); }
+
+    public TimerDefinition onElapsedTick(TimerAction action, int... ticks) { return onElapsedTick(action, false, ticks); }
+    public TimerDefinition onRemainingTick(TimerAction action, int... ticks) { return onRemainingTick(action, false, ticks); }
+    public TimerDefinition onElapsedTick(TimerAction action, boolean replace, int... ticks) {
+        return addBinding(elapsedBindings, normalizeTicks(ticks), TimerTickBasis.ELAPSED, action, replace);
+    }
+    public TimerDefinition onRemainingTick(TimerAction action, boolean replace, int... ticks) {
+        return addBinding(remainingBindings, normalizeTicks(ticks), TimerTickBasis.REMAINING, action, replace);
+    }
     public TimerDefinition onStarted(TimerAction action) { startedActions.add(action); return this; }
     public TimerDefinition onPaused(TimerAction action) { pausedActions.add(action); return this; }
     public TimerDefinition onResumed(TimerAction action) { resumedActions.add(action); return this; }
@@ -40,12 +49,29 @@ public final class TimerDefinition {
     public TimerDefinition onCompleted(TimerAction action) { completedActions.add(action); return this; }
     public boolean removeBinding(int bindingId) { return elapsedBindings.remove(bindingId) != null || remainingBindings.remove(bindingId) != null; }
 
-    private TimerDefinition addBinding(Map<Integer, TimerBinding> bindings, long tick, TimerTickBasis basis, TimerAction action, boolean replace) {
-        int id = nextBindingId++;
-        if (!replace && bindings.values().stream().anyMatch(binding -> binding.tick() == tick && binding.basis() == basis)) {
+    private TimerDefinition addBinding(Map<Integer, TimerBinding> bindings, Set<Long> ticks, TimerTickBasis basis, TimerAction action, boolean replace) {
+        if (ticks == null || ticks.isEmpty() || action == null || basis == null) {
             return this;
         }
-        bindings.put(id, new TimerBinding(id, tick, basis, action));
+        int id = nextBindingId++;
+        if (!replace && bindings.values().stream().anyMatch(binding -> binding.basis() == basis && !Collections.disjoint(binding.ticks(), ticks))) {
+            return this;
+        }
+        bindings.put(id, new TimerBinding(id, ticks, basis, action));
         return this;
+    }
+
+    private static Set<Long> normalizeTicks(int... ticks) {
+        if (ticks == null || ticks.length == 0) {
+            return Set.of();
+        }
+        Set<Long> normalized = new LinkedHashSet<>();
+        for (int tick : ticks) {
+            if (tick < 0) {
+                continue;
+            }
+            normalized.add((long) tick);
+        }
+        return normalized;
     }
 }

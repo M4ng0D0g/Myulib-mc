@@ -5,7 +5,8 @@
 	"client": [
 		"ExampleClientMixin",
 		"camera.CameraMixin",
-		"MixinKeyboardInput"
+		"MixinKeyboardInput",
+		"MixinMouse"
 	],
 	"injectors": {
 		"defaultRequire": 1

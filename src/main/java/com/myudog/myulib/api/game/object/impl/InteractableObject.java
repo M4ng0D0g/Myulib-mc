@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.game.object.impl;
 
 import com.myudog.myulib.api.game.object.GameObjectKind;
-import com.myudog.myulib.api.game.object.GameObjectProperty;
+import com.myudog.myulib.api.core.Property;
 import com.myudog.myulib.api.game.object.IGameObject;
 import com.myudog.myulib.api.game.object.behavior.InteractableBehavior;
 import net.minecraft.resources.Identifier;
@@ -13,7 +13,7 @@ import net.minecraft.resources.Identifier;
 public class InteractableObject extends BlockGameObject {
 
     // 🌟 定義強型別屬性：防止連點的冷卻時間 (毫秒)
-    public static final GameObjectProperty<Long> COOLDOWN_MS = new GameObjectProperty<>(
+    public static final Property<Long> COOLDOWN_MS = new Property<>(
             "cooldown_ms",
             Long.class,
             Long::parseLong

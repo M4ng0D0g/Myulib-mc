@@ -12,6 +12,7 @@ import com.myudog.myulib.api.camera.CameraApi;
 import com.myudog.myulib.api.permission.PermissionManager;
 import com.myudog.myulib.api.team.TeamManager;
 import com.myudog.myulib.api.timer.TimerManager;
+import com.myudog.myulib.api.ui.network.ConfigUiNetworking;
 
 public final class MyulibApi {
 	private MyulibApi() {
@@ -24,6 +25,8 @@ public final class MyulibApi {
 		CameraApi.initServer();
 		ControlManager.install();
 		HologramNetworking.registerPayloads();
+		ConfigUiNetworking.registerPayloads();
+		ConfigUiNetworking.registerServerReceivers();
 
 		FieldManager.install();
 		FieldVisualizationManager.install();

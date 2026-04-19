@@ -14,6 +14,7 @@ import com.myudog.myulib.api.game.event.GameEntityInteractEvent;
 import com.myudog.myulib.api.game.object.IGameObject;
 import com.myudog.myulib.api.game.object.impl.BlockGameObject;
 import com.myudog.myulib.api.game.state.GameState;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -37,6 +38,7 @@ public final class GameManager {
     private static final Map<Identifier, GameDefinition<?, ?, ?>> DEFINITIONS = new LinkedHashMap<>();
     private static final Map<Integer, GameInstance<?, ?, ?>> INSTANCES = new ConcurrentHashMap<>();
     private static final Map<String, Integer> INSTANCE_TOKENS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> playerToInstanceMap = new ConcurrentHashMap<>();
 
     // 🌟 效能優化：實體反向對應表 (Entity UUID -> Instance ID)
     // 當物件生成或玩家加入時寫入，死亡或離開時移除，O(1) 複雜度極速查詢
@@ -49,6 +51,23 @@ public final class GameManager {
 
     public static void install() {
         SpatialEffectEvents.register(GLOBAL_EFFECT_MANAGER);
+
+        ServerPlayerEvents.LEAVE.register((player) -> {
+            Integer instanceId = playerToInstanceMap.get(player.getUUID());
+            if (instanceId == null) {
+                return;
+            }
+
+            GameInstance<?, ?, ?> instance = INSTANCES.get(instanceId);
+            if (instance == null) {
+                playerToInstanceMap.remove(player.getUUID());
+                return;
+            }
+
+            if (!instance.isStarted()) {
+                unassignPlayer(player.getUUID());
+            }
+        });
     }
 
     public static ISpatialEffectManager getGlobalEffectManager() {
@@ -116,6 +135,28 @@ public final class GameManager {
         return instance;
     }
 
+    @SuppressWarnings("unchecked")
+    public static <C extends GameConfig, D extends GameData, S extends GameState> GameInstance<C, D, S> createInstance(Identifier gameId, String instanceToken, ServerLevel level) {
+        GameDefinition<C, D, S> definition = definition(gameId);
+        if (definition == null) {
+            throw new IllegalArgumentException("找不到該遊戲藍圖 (Unknown game definition): " + gameId);
+        }
+        return createInstance(gameId, instanceToken, (C) GameConfig.empty(), level);
+    }
+
+    public static <C extends GameConfig> boolean setInstanceConfig(String instanceToken, C config) {
+        Objects.requireNonNull(config, "config 不得為空");
+        GameInstance<?, ?, ?> instance = getInstance(instanceToken);
+        if (instance == null || instance.isStarted()) {
+            return false;
+        }
+
+        @SuppressWarnings("unchecked")
+        GameInstance<C, ?, ?> typed = (GameInstance<C, ?, ?>) instance;
+        typed.setConfig(config);
+        return true;
+    }
+
     public static OptionalInt resolveInstanceId(String instanceToken) {
         String normalizedToken = normalizeInstanceToken(instanceToken);
         if (normalizedToken.isBlank()) {
@@ -167,6 +208,7 @@ public final class GameManager {
         GameInstance<?, ?, ?> instance = INSTANCES.remove(instanceId);
         if (instance != null) {
             removeTokenByInstanceId(instanceId);
+            unassignPlayersInInstance(instanceId);
             // 觸發內部清理，包含資料重置與 Scoped 外部資源 (隊伍、區域) 註銷
             instance.destroy();
             DebugLogManager.log(DebugFeature.GAME, "destroy instance id=" + instanceId);
@@ -189,9 +231,92 @@ public final class GameManager {
         return instance.start();
     }
 
+    public static boolean initInstance(int instanceId) {
+        GameInstance<?, ?, ?> instance = INSTANCES.get(instanceId);
+        if (instance == null || !instance.isEnabled()) {
+            return false;
+        }
+        return instance.init();
+    }
+
     public static boolean startInstance(String instanceToken) {
         OptionalInt resolved = resolveInstanceId(instanceToken);
         return resolved.isPresent() && startInstance(resolved.getAsInt());
+    }
+
+    public static boolean initInstance(String instanceToken) {
+        OptionalInt resolved = resolveInstanceId(instanceToken);
+        return resolved.isPresent() && initInstance(resolved.getAsInt());
+    }
+
+    public static boolean endInstance(int instanceId) {
+        GameInstance<?, ?, ?> instance = INSTANCES.get(instanceId);
+        if (instance == null || !instance.isEnabled()) {
+            return false;
+        }
+
+        boolean ended = instance.end();
+        if (ended) {
+            INSTANCES.remove(instanceId);
+            removeTokenByInstanceId(instanceId);
+            unassignPlayersInInstance(instanceId);
+        }
+        return ended;
+    }
+
+    public static boolean endInstance(String instanceToken) {
+        OptionalInt resolved = resolveInstanceId(instanceToken);
+        return resolved.isPresent() && endInstance(resolved.getAsInt());
+    }
+
+    public static OptionalInt instanceOf(UUID playerId) {
+        Integer instanceId = playerId == null ? null : playerToInstanceMap.get(playerId);
+        return instanceId == null ? OptionalInt.empty() : OptionalInt.of(instanceId);
+    }
+
+    public static boolean joinPlayer(int instanceId, UUID playerId, Identifier requestedTeamId) {
+        GameInstance<?, ?, ?> instance = INSTANCES.get(instanceId);
+        if (instance == null || !instance.isEnabled()) {
+            return false;
+        }
+
+        if (playerId == null) {
+            return false;
+        }
+
+        Integer existing = playerToInstanceMap.get(playerId);
+        if (existing != null && existing != instanceId) {
+            return false;
+        }
+
+        boolean joined = instance.joinPlayer(playerId, requestedTeamId);
+        if (joined) {
+            playerToInstanceMap.put(playerId, instanceId);
+        }
+        return joined;
+    }
+
+    public static boolean joinPlayer(String instanceToken, UUID playerId, Identifier requestedTeamId) {
+        OptionalInt resolved = resolveInstanceId(instanceToken);
+        return resolved.isPresent() && joinPlayer(resolved.getAsInt(), playerId, requestedTeamId);
+    }
+
+    public static void unassignPlayer(UUID playerId) {
+        Integer instanceId = playerToInstanceMap.remove(playerId);
+        if (instanceId == null) {
+            return;
+        }
+
+        GameInstance<?, ?, ?> instance = INSTANCES.get(instanceId);
+        if (instance == null) {
+            return;
+        }
+
+        try {
+            instance.getData().removePlayerFromTeams(playerId);
+        } catch (IllegalStateException ignored) {
+            // Data is not initialized yet; only index cleanup is required.
+        }
     }
 
     public static boolean resetInstance(String instanceToken) {
@@ -236,7 +361,7 @@ public final class GameManager {
         }
 
         GameInstance<?, ?, ?> instance = INSTANCES.get(victimInstanceId);
-        if (instance == null || !instance.isEnabled()) {
+        if (instance == null || !instance.isEnabled() || !instance.isStarted()) {
             entityToInstanceMap.remove(victim.getUUID());
             return;
         }
@@ -251,7 +376,7 @@ public final class GameManager {
         }
 
         GameInstance<?, ?, ?> instance = INSTANCES.get(victimInstanceId);
-        if (instance == null || !instance.isEnabled()) {
+        if (instance == null || !instance.isEnabled() || !instance.isStarted()) {
             entityToInstanceMap.remove(victim.getUUID());
             return;
         }
@@ -262,7 +387,7 @@ public final class GameManager {
 
     public static boolean handleBlockBreak(ServerPlayer player, BlockPos pos, ServerLevel level) {
         GameInstance<?, ?, ?> instance = resolveInstanceForBlock(player, pos, level);
-        if (instance == null || !instance.isEnabled()) {
+        if (instance == null || !instance.isEnabled() || !instance.isStarted()) {
             return false;
         }
 
@@ -273,7 +398,7 @@ public final class GameManager {
 
     public static boolean handleBlockInteract(ServerPlayer player, BlockPos pos, ServerLevel level) {
         GameInstance<?, ?, ?> instance = resolveInstanceForBlock(player, pos, level);
-        if (instance == null || !instance.isEnabled()) {
+        if (instance == null || !instance.isEnabled() || !instance.isStarted()) {
             return false;
         }
 
@@ -289,7 +414,7 @@ public final class GameManager {
         }
 
         GameInstance<?, ?, ?> instance = INSTANCES.get(instanceId);
-        if (instance == null || !instance.isEnabled()) {
+        if (instance == null || !instance.isEnabled() || !instance.isStarted()) {
             return false;
         }
 
@@ -305,7 +430,7 @@ public final class GameManager {
         }
 
         for (GameInstance<?, ?, ?> candidate : INSTANCES.values()) {
-            if (!candidate.isEnabled() || candidate.getLevel() != level) {
+            if (!candidate.isEnabled() || !candidate.isStarted() || candidate.getLevel() != level) {
                 continue;
             }
 
@@ -323,7 +448,13 @@ public final class GameManager {
 
     // --- 給 GameObject 註冊實體用的 API ---
     public static void registerEntity(UUID entityUuid, int instanceId) {
-        entityToInstanceMap.put(entityUuid, instanceId);
+        if (!INSTANCES.containsKey(instanceId)) {
+            throw new IllegalArgumentException("instance 不存在: " + instanceId);
+        }
+        Integer existing = entityToInstanceMap.putIfAbsent(entityUuid, instanceId);
+        if (existing != null && existing != instanceId) {
+            throw new IllegalStateException("entity 已註冊於不同 instance: " + entityUuid + " -> " + existing + ", attempted=" + instanceId);
+        }
     }
 
     public static void unregisterEntity(UUID entityUuid) {
@@ -363,6 +494,10 @@ public final class GameManager {
 
     private static void pruneOrphanedTokens() {
         INSTANCE_TOKENS.entrySet().removeIf(entry -> !INSTANCES.containsKey(entry.getValue()));
+    }
+
+    private static void unassignPlayersInInstance(int instanceId) {
+        playerToInstanceMap.entrySet().removeIf(entry -> entry.getValue() == instanceId);
     }
 }
 

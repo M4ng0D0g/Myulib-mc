@@ -15,6 +15,8 @@ import com.myudog.myulib.api.game.object.impl.InteractableObject;
 import com.myudog.myulib.api.game.state.BasicGameStateMachine;
 import com.myudog.myulib.api.game.state.GameState;
 import com.myudog.myulib.api.game.state.GameStateMachine;
+import com.myudog.myulib.api.team.TeamColor;
+import com.myudog.myulib.api.team.TeamDefinition;
 import com.myudog.myulib.internal.event.EventDispatcherImpl;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -124,14 +126,40 @@ public final class TicTacToeGameDefinition extends GameDefinition<TicTacToeGameD
         }
 
         @Override
-        public void validate() {
-            GameConfig.super.validate();
+        public boolean validate() {
+            if (!GameConfig.super.validate()) {
+                return false;
+            }
             if (cellIds == null || cellIds.size() != 9) {
                 throw new IllegalArgumentException("井字棋需要剛好 9 個格子");
             }
             if (bluePlayerId == null) {
                 throw new IllegalArgumentException("必須指定藍隊玩家");
             }
+            return true;
+        }
+
+        @Override
+        public int maxPlayer() {
+            return 2;
+        }
+
+        @Override
+        public Map<String, Identifier> teams() {
+            return Map.of(
+                    GameConfig.SPECTATOR_TEAM_KEY, GameConfig.SPECTATOR_TEAM_ID,
+                    "blue", Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "tictactoe_blue")
+            );
+        }
+
+        @Override
+        public List<TeamDefinition> additionalTeamDefinitions() {
+            return List.of(new TeamDefinition(
+                    Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "tictactoe_blue"),
+                    Component.literal("TicTacToe Blue"),
+                    TeamColor.BLUE,
+                    Map.of()
+            ));
         }
     }
 

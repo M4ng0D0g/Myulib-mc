@@ -1,6 +1,7 @@
 package com.myudog.myulib.api.game.object;
 
 import com.myudog.myulib.api.game.core.GameInstance;
+import com.myudog.myulib.api.core.Property;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 
@@ -12,8 +13,8 @@ public interface IGameObject {
     Identifier getId(); // ID
     GameObjectKind getKind();
 
-    Collection<GameObjectProperty<?>> getProperties();
-    Optional<GameObjectProperty<?>> getProperty(String name);
+    Collection<Property<?>> getProperties();
+    Optional<Property<?>> getProperty(String name);
 
     default boolean validate() {
         return true;

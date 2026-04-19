@@ -23,6 +23,7 @@ public enum PermissionAction {
     USE_ITEM,            // 使用物品 (吃食物、喝藥水)
     DROP_ITEM,           // 丟棄物品
     PICKUP_ITEM,         // 🎒 新增：撿起物品
+    INVENTORY_MOVE,      // 移動物品欄、交換主副手
     OPEN_CONTAINER,      // 📦 新增：打開容器 (箱子、漏斗) - 從 INTERACT_BLOCK 獨立出來更安全
     TRIGGER_REDSTONE,    // 觸發紅石
     USE_PORTAL,          // 使用傳送門

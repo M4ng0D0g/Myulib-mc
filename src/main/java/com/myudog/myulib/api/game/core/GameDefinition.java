@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerLevel;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public abstract class GameDefinition<C extends GameConfig, D extends GameData, S extends GameState> {
     private final Identifier id;
@@ -45,6 +46,16 @@ public abstract class GameDefinition<C extends GameConfig, D extends GameData, S
         return List.of();
     }
 
+    protected Identifier resolveTeamForJoin(GameInstance<C, D, S> instance, UUID playerUuid, Identifier requestedTeamId) {
+        return requestedTeamId;
+    }
+
+    protected void onStart(GameInstance<C, D, S> instance) throws Exception {
+    }
+
+    protected void onEnd(GameInstance<C, D, S> instance) throws Exception {
+    }
+
     /**
      * @deprecated 請改用 gameBehaviors()，保留作相容橋接。
      */
@@ -58,14 +69,13 @@ public abstract class GameDefinition<C extends GameConfig, D extends GameData, S
         try {
             C resolvedConfig = Objects.requireNonNull(config, "傳入的 config 不得為空");
 
-            D data = Objects.requireNonNull(createInitialData(resolvedConfig), "createInitialData() 不得回傳 null");
             GameStateMachine<S> stateMachine = Objects.requireNonNull(createStateMachine(resolvedConfig), "createStateMachine() 不得回傳 null");
 
             // 🌟 這裡呼叫 createEventBus() 時，回傳型別與變數宣告現在 100% 吻合了！
             EventDispatcherImpl eventBus = Objects.requireNonNull(createEventBus(), "createEventBus() 不得回傳 null");
 
             // 將 eventBus 注入 GameInstance 建構子
-            GameInstance<C, D, S> instance = new GameInstance<>(instanceId, level, this, resolvedConfig, data, stateMachine, eventBus);
+            GameInstance<C, D, S> instance = new GameInstance<>(instanceId, level, this, resolvedConfig, stateMachine, eventBus);
             return instance;
         }
         catch (Exception e) {
@@ -73,27 +83,8 @@ public abstract class GameDefinition<C extends GameConfig, D extends GameData, S
         }
     }
 
-    public final void startInstance(GameInstance<C, D, S> instance) {
+    public final void initInstance(GameInstance<C, D, S> instance) {
         Objects.requireNonNull(instance, "instance 不得為空");
-
-        if (instance.getDefinition() != this) {
-            throw new IllegalArgumentException("instance 不屬於目前的 definition");
-        }
-
-        C config = instance.getConfig();
-        config.validate();
-
-        try {
-            instance.initializeRuntimeObjects();
-
-            for (GameBehavior<C, D, S> behavior : gameBehaviors()) {
-                instance.bindBehavior(behavior);
-            }
-
-            bindBehaviors(instance);
-        } catch (Exception e) {
-            instance.getData().reset(instance);
-            throw new RuntimeException("啟動遊戲實例失敗: " + e.getMessage(), e);
-        }
+        instance.init();
     }
 }

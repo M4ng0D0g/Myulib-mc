@@ -1,8 +1,8 @@
-package com.myudog.myulib.api.game.object;
+package com.myudog.myulib.api.core;
 
 import java.util.function.Function;
 
-public record GameObjectProperty<T>(
+public record Property<T>(
         String name,
         Class<T> type,
         Function<String, T> parser

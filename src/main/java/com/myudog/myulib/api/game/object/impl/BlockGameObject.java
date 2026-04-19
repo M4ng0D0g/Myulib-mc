@@ -2,7 +2,7 @@ package com.myudog.myulib.api.game.object.impl;
 
 import com.myudog.myulib.api.game.core.GameInstance;
 import com.myudog.myulib.api.game.object.GameObjectKind;
-import com.myudog.myulib.api.game.object.GameObjectProperty;
+import com.myudog.myulib.api.core.Property;
 import com.myudog.myulib.api.game.object.behavior.IBlockBehavior;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -20,14 +20,14 @@ import java.util.List;
 public abstract class BlockGameObject extends BaseGameObject {
 
     // 🌟 定義強型別屬性：該物件代表的方塊狀態
-    public static final GameObjectProperty<BlockState> BLOCK_STATE = new GameObjectProperty<>(
+    public static final Property<BlockState> BLOCK_STATE = new Property<>(
             "block_state",
             BlockState.class,
             s -> Blocks.AIR.defaultBlockState() // 此處建議對接一個 BlockState 序列化器
     );
 
     // AABB 採絕對世界座標: minX,minY,minZ,maxX,maxY,maxZ
-    public static final GameObjectProperty<AABB> BOUNDING_BOX = new GameObjectProperty<>(
+    public static final Property<AABB> BOUNDING_BOX = new Property<>(
             "bounding_box",
             AABB.class,
             BlockGameObject::parseAabb

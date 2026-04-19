@@ -15,14 +15,16 @@ public class MixinKeyboardInput {
     // 此時原版已經讀取完 WASD 的狀態了，正好是我們攔截的最佳時機
     @Inject(method = "tick()V", at = @At("TAIL"))
     private void interceptControlInput(CallbackInfo ci) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.options == null) {
+            return;
+        }
+
+        // Apply client-side control restrictions immediately for local input feel.
+        ClientControlManager.applyClientInputGuards(minecraft);
 
         // 如果玩家目前正在「遙控」別的生物
         if (ClientControlManager.isControlling()) {
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.options == null) {
-                return;
-            }
-
             // 1. 把真正的按鍵狀態發送給伺服器
             ClientControlManager.sendInput(
                     minecraft.options.keyUp.isDown(),

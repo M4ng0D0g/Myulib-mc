@@ -44,9 +44,16 @@ public class TimerManager {
     }
 
     public static void register(TimerDefinition timer) {
+        if (!validate(timer)) {
+            throw new IllegalArgumentException("TimerDefinition 驗證失敗: " + (timer == null ? "null" : timer.id));
+        }
         TIMERS.put(timer.id, timer);
         DebugLogManager.log(DebugFeature.TIMER,
                 "register id=" + timer.id + ",duration=" + timer.durationTicks + ",mode=" + timer.mode);
+    }
+
+    public static boolean validate(TimerDefinition timer) {
+        return timer != null && timer.id != null && !TIMERS.containsKey(timer.id);
     }
 
     public static TimerDefinition unregister(Identifier timerId) {
@@ -207,13 +214,13 @@ public class TimerManager {
 
                 // 🚀 效能優化：捨棄 Stream，改用傳統 foreach 避免每 Tick 產生大量 GC 垃圾
                 for (TimerBinding binding : timer.elapsedBindings.values()) {
-                    if (binding.basis() == TimerTickBasis.ELAPSED && binding.tick() == instance.elapsedTicks) {
+                    if (binding.basis() == TimerTickBasis.ELAPSED && binding.matches(instance.elapsedTicks)) {
                         binding.action().invoke(snapshot);
                     }
                 }
 
                 for (TimerBinding binding : timer.remainingBindings.values()) {
-                    if (binding.basis() == TimerTickBasis.REMAINING && binding.tick() == remaining) {
+                    if (binding.basis() == TimerTickBasis.REMAINING && binding.matches(remaining)) {
                         binding.action().invoke(snapshot);
                     }
                 }

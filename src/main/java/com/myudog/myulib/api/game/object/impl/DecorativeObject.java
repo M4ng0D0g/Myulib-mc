@@ -2,7 +2,7 @@ package com.myudog.myulib.api.game.object.impl;
 
 import com.myudog.myulib.api.game.core.GameInstance;
 import com.myudog.myulib.api.game.object.GameObjectKind;
-import com.myudog.myulib.api.game.object.GameObjectProperty;
+import com.myudog.myulib.api.core.Property;
 import com.myudog.myulib.api.game.object.IGameObject;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
@@ -29,7 +29,7 @@ public class DecorativeObject<E extends Entity> extends EntityGameObject<E> {
 
     // 🌟 定義 NBT 屬性，這對 DisplayEntity (展示實體) 非常重要！
     // 例如設定大小、顯示的方塊/物品、旋轉角度等，全部透過 NBT 驅動
-    public static final GameObjectProperty<CompoundTag> NBT_DATA = new GameObjectProperty<>(
+    public static final Property<CompoundTag> NBT_DATA = new Property<>(
             "nbt",
             CompoundTag.class,
             s -> {

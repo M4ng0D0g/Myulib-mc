@@ -2,7 +2,7 @@ package com.myudog.myulib.api.game.object.impl;
 
 import com.myudog.myulib.api.game.core.GameInstance;
 import com.myudog.myulib.api.game.object.GameObjectKind;
-import com.myudog.myulib.api.game.object.GameObjectProperty;
+import com.myudog.myulib.api.core.Property;
 import com.myudog.myulib.api.game.object.GameObjectState;
 import com.myudog.myulib.api.game.object.IGameObject;
 import net.minecraft.nbt.CompoundTag;
@@ -20,10 +20,10 @@ public abstract class BaseGameObject implements IGameObject {
     protected final GameObjectKind kind;
     private GameObjectState state;
 
-    private final Map<String, GameObjectProperty<?>> registry = new HashMap<>();
-    private final Map<GameObjectProperty<?>, Object> values = new HashMap<>();
+    private final Map<String, Property<?>> registry = new HashMap<>();
+    private final Map<Property<?>, Object> values = new HashMap<>();
 
-    public static final GameObjectProperty<Vec3> POS = new GameObjectProperty<>(
+    public static final Property<Vec3> POS = new Property<>(
             "pos",
             Vec3.class,
             s -> {
@@ -68,7 +68,7 @@ public abstract class BaseGameObject implements IGameObject {
     public GameObjectState getState() { return state; }
     protected void setState(GameObjectState state) { this.state = state; }
 
-    protected <T> void define(GameObjectProperty<T> prop, T defaultValue) {
+    protected <T> void define(Property<T> prop, T defaultValue) {
         registry.put(prop.name(), prop);
         values.put(prop, defaultValue);
     }
@@ -77,16 +77,16 @@ public abstract class BaseGameObject implements IGameObject {
     protected abstract void registerProperties();
 
     @SuppressWarnings("unchecked")
-    public <T> T get(GameObjectProperty<T> prop) {
+    public <T> T get(Property<T> prop) {
         return (T) values.get(prop);
     }
 
-    public <T> void set(GameObjectProperty<T> prop, T value) {
+    public <T> void set(Property<T> prop, T value) {
         values.put(prop, value);
     }
 
-    @Override public Collection<GameObjectProperty<?>> getProperties() { return registry.values(); }
-    @Override public Optional<GameObjectProperty<?>> getProperty(String name) { return Optional.ofNullable(registry.get(name)); }
+    @Override public Collection<Property<?>> getProperties() { return registry.values(); }
+    @Override public Optional<Property<?>> getProperty(String name) { return Optional.ofNullable(registry.get(name)); }
     @Override public Identifier getId() { return id; }
     @Override public GameObjectKind getKind() { return kind; }
 
@@ -96,7 +96,7 @@ public abstract class BaseGameObject implements IGameObject {
     protected final void copyBaseStateTo(BaseGameObject target) {
         target.state = GameObjectState.NOT_LOADED;
         target.values.clear();
-        for (Map.Entry<GameObjectProperty<?>, Object> entry : this.values.entrySet()) {
+        for (Map.Entry<Property<?>, Object> entry : this.values.entrySet()) {
             target.values.put(entry.getKey(), cloneValue(entry.getValue()));
         }
     }

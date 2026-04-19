@@ -1,13 +1,20 @@
 package com.myudog.myulib.api.control;
 
 import com.myudog.myulib.api.control.network.ControlInputPayload;
+import com.myudog.myulib.api.control.network.ServerControlNetworking;
 import com.myudog.myulib.api.debug.DebugFeature;
 import com.myudog.myulib.api.debug.DebugLogManager;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,112 +24,118 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ControlManager {
 
-    // 雙向映射表：確保 1 對 1 關係
-    // 玩家 UUID -> 被控制的實體 UUID
-    private static final Map<UUID, UUID> PLAYER_TO_ENTITY = new ConcurrentHashMap<>();
-    // 被控制的實體 UUID -> 玩家 UUID
-    private static final Map<UUID, UUID> ENTITY_TO_PLAYER = new ConcurrentHashMap<>();
+    // 控制者玩家 UUID -> 目標實體 UUID
+    private static final Map<UUID, UUID> CONTROLLER_TO_TARGET = new ConcurrentHashMap<>();
+    // 目標實體 UUID -> 控制者玩家 UUID
+    private static final Map<UUID, UUID> TARGET_TO_CONTROLLER = new ConcurrentHashMap<>();
     // 實體 UUID -> 最新的按鍵指令
     private static final Map<UUID, ControlInputPayload> ENTITY_INPUTS = new ConcurrentHashMap<>();
+    // 玩家 UUID -> 被停用的控制項
+    private static final Map<UUID, Set<ControlType>> PLAYER_DISABLED_CONTROLS = new ConcurrentHashMap<>();
 
     private ControlManager() {}
 
     public static void install() {
-
+        ServerControlNetworking.registerPayloads();
+        ServerControlNetworking.registerServerReceivers();
     }
 
-    /**
-     * 讓玩家綁定並控制一個實體
-     * @return 綁定是否成功
-     */
     public static boolean bind(ServerPlayer player, Entity target) {
-        if (player == null || target == null) return false;
-
-        UUID playerId = player.getUUID();
-        UUID targetId = target.getUUID();
-
-        // 🛡️ 規則 1：如果玩家已經在控制別的東西，先讓他解除綁定
-        if (PLAYER_TO_ENTITY.containsKey(playerId)) {
-            unbind(player);
+        if (player == null || target == null) {
+            return false;
+        }
+        Set<UUID> syncTargets = new HashSet<>();
+        boolean changed = bindInternal(player.getUUID(), target.getUUID(), syncTargets);
+        if (!changed) {
+            return false;
         }
 
-        // 🛡️ 規則 2：擠出機制 (Kick-out)
-        // 如果這個生物已經被別人控制了，把那個人踢掉！
-        if (ENTITY_TO_PLAYER.containsKey(targetId)) {
-            UUID oldControllerId = ENTITY_TO_PLAYER.get(targetId);
-            // 優先維持映射一致性；舊控制者的玩家實例若不可得，仍先移除其控制關係。
-            PLAYER_TO_ENTITY.remove(oldControllerId);
-            ENTITY_TO_PLAYER.remove(targetId);
-        }
-
-        // 🌟 建立雙向綁定
-        PLAYER_TO_ENTITY.put(playerId, targetId);
-        ENTITY_TO_PLAYER.put(targetId, playerId);
-
-        // --- 狀態切換邏輯 ---
-
-        // 1. 剝奪生物原有的 AI (如果是 Mob 的話)
         if (target instanceof Mob mob) {
-            // 提示：setNoAi(true) 會讓生物連重力都失去，變成木頭。
-            // 實務上我們通常會寫一個 Mixin，當生物在 ENTITY_TO_PLAYER 裡時，清空它的 GoalSelector，只接受網路封包的移動指令。
-            // 這裡暫時用自訂 Tag 或屬性標記
             mob.addTag("myulib_controlled");
         }
 
-        // 2. 玩家肉體進入「觀察者/發呆」狀態
-        // 建議：給予玩家極高強度的緩慢、跳躍提升(無法跳躍)、以及無敵狀態，並透過 Mixin 鎖死 WASD
-        player.addTag("myulib_controlling");
-        player.setInvulnerable(true);
-
-        // 3. 觸發 Camera 系統 (將視角綁定過去)
-        // CameraApi.moveTo(player, CameraTrackingTarget.of(target), ...);
-
         DebugLogManager.log(DebugFeature.CONTROL,
-                "bind player=" + player.getName().getString() + "(" + playerId + ") -> entity=" + target.getType().toString() + "(" + targetId + ")");
+                "bind player=" + player.getName().getString() + "(" + player.getUUID() + ") -> entity=" + target.getType() + "(" + target.getUUID() + ")");
+        syncPlayers(player.level().getServer(), syncTargets);
         return true;
     }
 
-    /**
-     * 解除玩家的控制狀態
-     */
     public static void unbind(ServerPlayer player) {
-        if (player == null) return;
-        UUID playerId = player.getUUID();
-
-        UUID targetId = PLAYER_TO_ENTITY.remove(playerId);
-        if (targetId != null) {
-            ENTITY_TO_PLAYER.remove(targetId);
+        if (player == null) {
+            return;
         }
-
-        // 恢復玩家肉體狀態
-        player.removeTag("myulib_controlling");
-        player.setInvulnerable(false);
-        DebugLogManager.log(DebugFeature.CONTROL,
-                "unbind player=" + player.getName().getString() + "(" + playerId + ") from entity=" + targetId);
-
-        // 視角歸位
-        // CameraApi.reset(player);
+        Set<UUID> syncTargets = new HashSet<>();
+        unbindControllerInternal(player.getUUID(), syncTargets);
+        syncPlayers(player.level().getServer(), syncTargets);
     }
 
-    // --- 查詢工具 ---
+    public static boolean bind(UUID controllerId, UUID targetId) {
+        if (controllerId == null || targetId == null) {
+            return false;
+        }
+        return bindInternal(controllerId, targetId, new HashSet<>());
+    }
+
+    public static void unbindFrom(UUID controllerId) {
+        if (controllerId == null) {
+            return;
+        }
+        unbindControllerInternal(controllerId, new HashSet<>());
+    }
+
+    public static void unbindTo(UUID targetId) {
+        if (targetId == null) {
+            return;
+        }
+        unbindTargetInternal(targetId, new HashSet<>());
+    }
+
+    public static void unbindTo(Entity target) {
+        if (target == null) {
+            return;
+        }
+        Set<UUID> syncTargets = new HashSet<>();
+        unbindTargetInternal(target.getUUID(), syncTargets);
+        syncPlayers(target.level().getServer(), syncTargets);
+    }
 
     public static boolean isControlling(ServerPlayer player) {
-        return PLAYER_TO_ENTITY.containsKey(player.getUUID());
+        return player != null && CONTROLLER_TO_TARGET.containsKey(player.getUUID());
+    }
+
+    public static boolean isController(UUID uuid) {
+        return uuid != null && CONTROLLER_TO_TARGET.containsKey(uuid);
     }
 
     public static UUID getControlledEntity(ServerPlayer player) {
-        return PLAYER_TO_ENTITY.get(player.getUUID());
+        return player == null ? null : CONTROLLER_TO_TARGET.get(player.getUUID());
+    }
+
+    public static Optional<UUID> targetOfController(UUID controllerId) {
+        return Optional.ofNullable(controllerId == null ? null : CONTROLLER_TO_TARGET.get(controllerId));
+    }
+
+    public static Optional<UUID> controllerOfTarget(UUID targetId) {
+        return Optional.ofNullable(targetId == null ? null : TARGET_TO_CONTROLLER.get(targetId));
+    }
+
+    public static boolean isControlledTarget(UUID entityId) {
+        return entityId != null && TARGET_TO_CONTROLLER.containsKey(entityId);
     }
 
     public static boolean isControlledByPlayer(Entity entity) {
-        return ENTITY_TO_PLAYER.containsKey(entity.getUUID());
+        return entity != null && TARGET_TO_CONTROLLER.containsKey(entity.getUUID());
     }
 
     /**
      * 伺服器收到封包時呼叫：更新目標實體的輸入狀態
      */
     public static void updateInput(ServerPlayer player, ControlInputPayload input) {
-        UUID targetId = PLAYER_TO_ENTITY.get(player.getUUID());
+        if (player == null || input == null) {
+            return;
+        }
+
+        UUID targetId = CONTROLLER_TO_TARGET.get(player.getUUID());
         if (targetId != null) {
             ENTITY_INPUTS.put(targetId, input);
             DebugLogManager.log(DebugFeature.CONTROL,
@@ -140,10 +153,199 @@ public final class ControlManager {
     }
 
     public static int controlledCount() {
-        return PLAYER_TO_ENTITY.size();
+        return CONTROLLER_TO_TARGET.size();
     }
 
     public static int bufferedInputCount() {
         return ENTITY_INPUTS.size();
+    }
+
+    public static boolean setPlayerControl(ServerPlayer player, ControlType type, boolean enabled) {
+        if (player == null) {
+            return false;
+        }
+        boolean changed = setPlayerControl(player.getUUID(), type, enabled);
+        if (changed) {
+            syncControlState(player);
+        }
+        return changed;
+    }
+
+    public static boolean setPlayerControl(UUID playerId, ControlType type, boolean enabled) {
+        if (playerId == null || type == null) {
+            return false;
+        }
+
+        if (enabled) {
+            Set<ControlType> disabled = PLAYER_DISABLED_CONTROLS.get(playerId);
+            if (disabled == null) {
+                return false;
+            }
+
+            boolean changed = disabled.remove(type);
+            if (disabled.isEmpty()) {
+                PLAYER_DISABLED_CONTROLS.remove(playerId, disabled);
+            }
+            return changed;
+        }
+
+        Set<ControlType> disabled = PLAYER_DISABLED_CONTROLS.computeIfAbsent(playerId,
+                ignored -> Collections.newSetFromMap(new ConcurrentHashMap<>()));
+        return disabled.add(type);
+    }
+
+    public static boolean isPlayerControlEnabled(ServerPlayer player, ControlType type) {
+        if (player == null) {
+            return true;
+        }
+        return isPlayerControlEnabled(player.getUUID(), type);
+    }
+
+    public static boolean isPlayerControlEnabled(UUID playerId, ControlType type) {
+        if (playerId == null || type == null) {
+            return true;
+        }
+        return !effectiveDisabledPlayerControls(playerId).contains(type);
+    }
+
+    public static Set<ControlType> disabledPlayerControls(UUID playerId) {
+        if (playerId == null) {
+            return Set.of();
+        }
+        Set<ControlType> disabled = PLAYER_DISABLED_CONTROLS.get(playerId);
+        if (disabled == null || disabled.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(EnumSet.copyOf(disabled));
+    }
+
+    public static Set<ControlType> effectiveDisabledPlayerControls(UUID playerId) {
+        EnumSet<ControlType> disabled = EnumSet.noneOf(ControlType.class);
+        disabled.addAll(disabledPlayerControls(playerId));
+
+        if (isController(playerId)) {
+            disabled.add(ControlType.MOVE);
+            disabled.add(ControlType.SPRINT);
+            disabled.add(ControlType.SNEAK);
+            disabled.add(ControlType.CRAWL);
+            disabled.add(ControlType.JUMP);
+        }
+
+        if (isControlledTarget(playerId)) {
+            disabled.addAll(EnumSet.allOf(ControlType.class));
+        }
+
+        return Set.copyOf(disabled);
+    }
+
+    public static void clearPlayerControls(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+        PLAYER_DISABLED_CONTROLS.remove(playerId);
+    }
+
+    public static void clearAllPlayerControls() {
+        PLAYER_DISABLED_CONTROLS.clear();
+    }
+
+    public static int encodeDisabledMask(Set<ControlType> disabled) {
+        if (disabled == null || disabled.isEmpty()) {
+            return 0;
+        }
+        int mask = 0;
+        for (ControlType type : disabled) {
+            mask |= (1 << type.ordinal());
+        }
+        return mask;
+    }
+
+    public static void syncControlState(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+
+        UUID playerId = player.getUUID();
+        Set<ControlType> disabled = effectiveDisabledPlayerControls(playerId);
+        ServerControlNetworking.syncControlState(
+                player,
+                encodeDisabledMask(disabled),
+                isController(playerId),
+                isControlledTarget(playerId)
+        );
+    }
+
+    private static boolean bindInternal(UUID controllerId, UUID targetId, Set<UUID> syncTargets) {
+        if (controllerId == null || targetId == null || controllerId.equals(targetId)) {
+            return false;
+        }
+
+        if (isControlledTarget(controllerId)) {
+            return false;
+        }
+
+        syncTargets.add(controllerId);
+        syncTargets.add(targetId);
+
+        UUID oldTarget = CONTROLLER_TO_TARGET.remove(controllerId);
+        if (oldTarget != null) {
+            TARGET_TO_CONTROLLER.remove(oldTarget, controllerId);
+            ENTITY_INPUTS.remove(oldTarget);
+            syncTargets.add(oldTarget);
+        }
+
+        UUID oldController = TARGET_TO_CONTROLLER.remove(targetId);
+        if (oldController != null) {
+            CONTROLLER_TO_TARGET.remove(oldController, targetId);
+            syncTargets.add(oldController);
+        }
+
+        // 如果目標本身是控制者，解除其既有控制關係（被接管者不可再操控他人）。
+        UUID targetWasControlling = CONTROLLER_TO_TARGET.remove(targetId);
+        if (targetWasControlling != null) {
+            TARGET_TO_CONTROLLER.remove(targetWasControlling, targetId);
+            ENTITY_INPUTS.remove(targetWasControlling);
+            syncTargets.add(targetWasControlling);
+        }
+
+        CONTROLLER_TO_TARGET.put(controllerId, targetId);
+        TARGET_TO_CONTROLLER.put(targetId, controllerId);
+        return true;
+    }
+
+    private static void unbindControllerInternal(UUID controllerId, Set<UUID> syncTargets) {
+        UUID targetId = CONTROLLER_TO_TARGET.remove(controllerId);
+        if (targetId != null) {
+            TARGET_TO_CONTROLLER.remove(targetId, controllerId);
+            ENTITY_INPUTS.remove(targetId);
+            syncTargets.add(controllerId);
+            syncTargets.add(targetId);
+            DebugLogManager.log(DebugFeature.CONTROL,
+                    "unbind controller=" + controllerId + " from target=" + targetId);
+        }
+    }
+
+    private static void unbindTargetInternal(UUID targetId, Set<UUID> syncTargets) {
+        UUID controllerId = TARGET_TO_CONTROLLER.remove(targetId);
+        if (controllerId != null) {
+            CONTROLLER_TO_TARGET.remove(controllerId, targetId);
+            ENTITY_INPUTS.remove(targetId);
+            syncTargets.add(controllerId);
+            syncTargets.add(targetId);
+            DebugLogManager.log(DebugFeature.CONTROL,
+                    "unbind target=" + targetId + " from controller=" + controllerId);
+        }
+    }
+
+    private static void syncPlayers(MinecraftServer server, Set<UUID> playerIds) {
+        if (server == null || playerIds == null || playerIds.isEmpty()) {
+            return;
+        }
+        for (UUID playerId : playerIds) {
+            ServerPlayer online = server.getPlayerList().getPlayer(playerId);
+            if (online != null) {
+                syncControlState(online);
+            }
+        }
     }
 }

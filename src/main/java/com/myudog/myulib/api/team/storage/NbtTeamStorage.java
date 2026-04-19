@@ -116,6 +116,7 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
         tag.putString("displayName", team.translationKey().getString());
 
         tag.putString("color", team.color().name());
+        tag.putInt("playerLimit", team.playerLimit());
 
         CompoundTag flagsTag = new CompoundTag();
         for (Map.Entry<TeamFlag, Boolean> entry : team.flags().entrySet()) {
@@ -152,7 +153,8 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
             }
         }
 
-        return new TeamDefinition(id, displayName, color, flags);
+        int playerLimit = Math.max(0, tag.getInt("playerLimit").orElse(0));
+        return new TeamDefinition(id, displayName, color, flags, playerLimit);
     }
 
     // =====================================================================

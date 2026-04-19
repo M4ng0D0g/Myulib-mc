@@ -2,7 +2,7 @@ package com.myudog.myulib.api.game.object.impl;
 
 import com.myudog.myulib.api.game.core.GameInstance;
 import com.myudog.myulib.api.game.object.GameObjectKind;
-import com.myudog.myulib.api.game.object.GameObjectProperty;
+import com.myudog.myulib.api.core.Property;
 import com.myudog.myulib.api.game.object.IGameObject;
 import net.minecraft.resources.Identifier;
 
@@ -13,7 +13,7 @@ import net.minecraft.resources.Identifier;
 public class RespawnPointObject extends BaseGameObject {
 
     // 🌟 定義強型別屬性：所屬隊伍 ID
-    public static final GameObjectProperty<String> TEAM_ID = new GameObjectProperty<>(
+    public static final Property<String> TEAM_ID = new Property<>(
             "team_id",
             String.class,
             s -> s

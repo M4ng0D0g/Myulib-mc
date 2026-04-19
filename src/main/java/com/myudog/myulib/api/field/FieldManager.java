@@ -64,16 +64,8 @@ public final class FieldManager {
     public static FieldDefinition register(FieldDefinition field) {
         Objects.requireNonNull(field, "field 不得為空");
 
-        // 🛡️ 空間重疊檢查 (直接遍歷記憶體)
-        for (FieldDefinition existing : FIELDS.values()) {
-            if (existing.dimensionId().equals(field.dimensionId())) {
-                if (existing.bounds().intersects(field.bounds())) {
-                    throw new IllegalArgumentException(
-                            String.format("註冊失敗！新區域 [%s] 與現有區域 [%s] 發生空間重疊！",
-                                    field.id(), existing.id())
-                    );
-                }
-            }
+        if (!validate(field)) {
+            throw new IllegalArgumentException("FieldDefinition 驗證失敗: " + field.id());
         }
 
         FIELDS.put(field.id(), field);
@@ -85,6 +77,27 @@ public final class FieldManager {
                         + ",max=(" + field.bounds().maxX + "," + field.bounds().maxY + "," + field.bounds().maxZ + ")");
 
         return field;
+    }
+
+    public static boolean validate(FieldDefinition field) {
+        if (field == null || field.id() == null || field.dimensionId() == null || field.bounds() == null) {
+            return false;
+        }
+
+        if (FIELDS.containsKey(field.id())) {
+            return false;
+        }
+
+        // 🛡️ 空間重疊檢查 (直接遍歷記憶體)
+        for (FieldDefinition existing : FIELDS.values()) {
+            if (existing.dimensionId().equals(field.dimensionId())) {
+                if (existing.bounds().intersects(field.bounds())) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     public static void unregister(Identifier fieldId) {

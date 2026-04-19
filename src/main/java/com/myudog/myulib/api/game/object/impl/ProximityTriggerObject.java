@@ -2,7 +2,7 @@ package com.myudog.myulib.api.game.object.impl;
 
 import com.myudog.myulib.api.game.core.GameInstance;
 import com.myudog.myulib.api.game.object.GameObjectKind;
-import com.myudog.myulib.api.game.object.GameObjectProperty;
+import com.myudog.myulib.api.core.Property;
 import com.myudog.myulib.api.game.object.IGameObject;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -22,18 +22,18 @@ import java.util.UUID;
 public class ProximityTriggerObject extends BaseGameObject {
 
     // 🌟 定義強型別屬性
-    public static final GameObjectProperty<Double> RADIUS = new GameObjectProperty<>(
+    public static final Property<Double> RADIUS = new Property<>(
             "radius", Double.class, Double::parseDouble
     );
-    public static final GameObjectProperty<String> SHAPE = new GameObjectProperty<>(
+    public static final Property<String> SHAPE = new Property<>(
             "shape", String.class, String::toUpperCase
     );
-    public static final GameObjectProperty<UUID> TARGET = new GameObjectProperty<>(
+    public static final Property<UUID> TARGET = new Property<>(
             "target", UUID.class, UUID::fromString
     );
 
     // 🌟 新增 AABB 專用的維度屬性 (解析如 "2.0,2.0,2.0" 的字串)
-    public static final GameObjectProperty<Vec3> DIMENSIONS = new GameObjectProperty<>(
+    public static final Property<Vec3> DIMENSIONS = new Property<>(
             "dimensions", Vec3.class, s -> {
         String[] parts = s.split(",");
         if (parts.length >= 3) {
