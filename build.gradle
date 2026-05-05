@@ -14,13 +14,20 @@ base {
 repositories {
     gradlePluginPortal()
     mavenCentral()
+
     maven {
         url = "https://maven.maxhenkel.de/repository/public"
     }
+
     maven {
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
+        content {
+            // 明確指定：只有 maven.modrinth 開頭的套件才准來這裡找
+            includeGroup "maven.modrinth"
+        }
     }
+
 }
 
 loom {
