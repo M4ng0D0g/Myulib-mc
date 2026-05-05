@@ -8,10 +8,12 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -21,7 +23,7 @@ public final class TimerManager {
     public static final TimerManager INSTANCE = new TimerManager();
 
     
-    private final Map<Identifier, TimerDefinition> TIMERS = new LinkedHashMap<>();
+    private final Map<UUID, TimerDefinition> TIMERS = new LinkedHashMap<>();
     private final Map<Integer, TimerInstance> INSTANCES = new ConcurrentHashMap<>();
     private final AtomicInteger NEXT_INSTANCE_ID = new AtomicInteger(1);
 
@@ -49,40 +51,48 @@ public final class TimerManager {
 
     public void register(TimerDefinition timer) {
         if (!validate(timer)) {
-            throw new IllegalArgumentException("TimerDefinition 驗證失敗: " + (timer == null ? "null" : timer.id));
+            throw new IllegalArgumentException("TimerDefinition 驗證失敗: " + (timer == null ? "null" : timer.uuid));
         }
-        TIMERS.put(timer.id, timer);
+        TIMERS.put(timer.uuid, timer);
         DebugLogManager.INSTANCE.log(DebugFeature.TIMER,
-                "register id=" + timer.id + ",duration=" + timer.durationTicks + ",mode=" + timer.mode);
+                "register uuid=" + timer.uuid + ",duration=" + timer.durationTicks + ",mode=" + timer.mode);
     }
 
     public boolean validate(TimerDefinition timer) {
-        return timer != null && timer.id != null && !TIMERS.containsKey(timer.id);
+        return timer != null && timer.uuid != null && !TIMERS.containsKey(timer.uuid);
     }
 
-    public TimerDefinition unregister(Identifier timerId) {
-        DebugLogManager.INSTANCE.log(DebugFeature.TIMER, "unregister id=" + timerId);
-        return TIMERS.remove(timerId);
+    public TimerDefinition unregister(UUID timerUuid) {
+        DebugLogManager.INSTANCE.log(DebugFeature.TIMER, "unregister uuid=" + timerUuid);
+        return TIMERS.remove(timerUuid);
     }
 
-    public boolean has(Identifier timerId) {
-        return TIMERS.containsKey(timerId);
+    public boolean has(UUID timerUuid) {
+        return TIMERS.containsKey(timerUuid);
     }
 
-    public int createInstance(Identifier timerId, Long ownerEntityId, TimerPayload payload, boolean autoStart, Object Level) {
-        TimerDefinition timer = TIMERS.get(timerId);
+    public int createInstance(UUID timerUuid, Long ownerEntityId, TimerPayload payload, boolean autoStart, Object Level) {
+        TimerDefinition timer = TIMERS.get(timerUuid);
         if (timer == null) {
-            throw new IllegalArgumentException("Unknown timer: " + timerId);
+            throw new IllegalArgumentException("Unknown timer: " + timerUuid);
         }
         int instanceId = NEXT_INSTANCE_ID.getAndIncrement();
-        TimerInstance instance = new TimerInstance(instanceId, timerId, ownerEntityId, payload);
+        TimerInstance instance = new TimerInstance(instanceId, timerUuid, ownerEntityId, payload);
         INSTANCES.put(instanceId, instance);
         DebugLogManager.INSTANCE.log(DebugFeature.TIMER,
-                "create instance=" + instanceId + ",timer=" + timerId + ",owner=" + ownerEntityId + ",autoStart=" + autoStart);
+                "create instance=" + instanceId + ",timer=" + timerUuid + ",owner=" + ownerEntityId + ",autoStart=" + autoStart);
         if (autoStart) {
             start(instanceId);
         }
         return instanceId;
+    }
+
+    public int createInstance(Identifier timerId, Long ownerEntityId, TimerPayload payload, boolean autoStart, Object Level) {
+        return createInstance(stableUuid(timerId.toString()), ownerEntityId, payload, autoStart, Level);
+    }
+
+    public int createInstance(String timerId, Long ownerEntityId, TimerPayload payload, boolean autoStart, Object Level) {
+        return createInstance(stableUuid(timerId), ownerEntityId, payload, autoStart, Level);
     }
 
     public TimerInstance getInstance(int timerEntityId, Object Level) {
@@ -116,7 +126,8 @@ public final class TimerManager {
     }
 
     public int start(long ticks, Consumer<Integer> onExpire) {
-        Identifier timerId = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "auto_timer_" + NEXT_INSTANCE_ID.get());
+        String timerKey = "auto_timer_" + NEXT_INSTANCE_ID.get();
+        UUID timerId = stableUuid(timerKey);
         TimerDefinition timer = new TimerDefinition(timerId, ticks, TimerMode.COUNT_DOWN, true)
                 .onCompleted(snapshot -> {
                     if (onExpire != null) {
@@ -256,6 +267,10 @@ public final class TimerManager {
         if (snapshot != null) {
             actionConsumer.accept(snapshot);
         }
+    }
+
+    private static UUID stableUuid(String token) {
+        return UUID.nameUUIDFromBytes(token.getBytes(StandardCharsets.UTF_8));
     }
 }
 

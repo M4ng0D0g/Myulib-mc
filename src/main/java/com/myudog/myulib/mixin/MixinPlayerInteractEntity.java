@@ -60,7 +60,7 @@ public abstract class MixinPlayerInteractEntity {
             return;
         }
 
-        boolean canceled = GameManager.handleEntityInteract(serverPlayer, entity, hand);
+        boolean canceled = GameManager.INSTANCE.handleEntityInteract(serverPlayer, entity, hand);
         if (canceled) {
             cir.setReturnValue(InteractionResult.SUCCESS);
             DebugTraceManager.INSTANCE.end(serverPlayer, "result=GAME_CONSUMED");

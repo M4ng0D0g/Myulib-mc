@@ -12,7 +12,7 @@ final class ControlInputPayloadTest {
 
     @Test
     void controlInputPayloadUsesExpectedIdentifierAndFields() {
-        assertEquals(Identifier.fromNamespaceAndPath("myulib", "control_input"), ControlInputPayload.ID,
+        assertEquals(Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "control_input"), ControlInputPayload.ID,
                 "ControlInputPayload ID must stay stable for network compatibility");
 
         ControlInputPayload payload = new ControlInputPayload(true, false, true, false, true, false, 30.0f, -15.0f);

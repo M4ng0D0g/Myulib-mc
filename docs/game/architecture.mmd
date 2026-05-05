@@ -1,157 +1,45 @@
-%% Auto-generated for api module: game
-%% Source: src/main/java/com/myudog/myulib/api
-classDiagram
-direction LR
+%% Game runtime lifecycle architecture
+%% Maintained manually; reflects current create/init/join/start/end/clean flow.
+flowchart TD
+    C0[Command: /myulib:game create] --> C1[GameManager.createInstance]
+    C1 --> C2[GameDefinition.createInstance]
+    C2 --> C3[createStateMachine + createEventBus]
+    C3 --> C4[new GameInstance]
+    C4 --> C5[GameScopeTokens.scoped]
+    C5 --> C6[GameInstance.setupIdentity]
 
-namespace game_components {
-  class c_com_myudog_myulib_api_game_components_ComponentManager["ComponentManager"] {
-    ~private ComponentManager()
-    +void install()
-    +void register(ComponentModels.ComponentBindingDefinition binding)
-    +void bindInstance(GameInstance~?, ?, ?~ instance, Iterable~ComponentModels.ComponentBindingDefinition~ bindings)
-    +ComponentModels.ComponentBindingDefinition get(Identifier bindingId)
-    +void publish(ComponentModels.ComponentSignal signal)
-  }
-  class c_com_myudog_myulib_api_game_components_ComponentModels["ComponentModels"] {
-    ~private ComponentModels()
-    +record ComponentBindingDefinition(Identifier id)
-  }
-}
+    I0[Command: /myulib:game init] --> I1[GameManager.initInstance]
+    I1 --> I2[GameInstance.init]
+    I2 --> I3[GameConfig.validate (manager checks)]
+    I3 --> I4[GameDefinition.createInitialData]
+    I4 --> I5[GameData.init (rollback)]
+    I5 --> I6[initializeRuntimeObjects]
+    I6 --> I7[GameDefinition.init -> bindBehavior]
+    I7 --> I8[initialized = true]
 
-namespace game_core {
-  class c_com_myudog_myulib_api_game_core_GameConfig["GameConfig"] {
-    <<interface>>
-    ~GameConfig empty()
-  }
-  class c_com_myudog_myulib_api_game_core_GameData["GameData"] {
-    -Identifier id
-    -EcsContainer EcsContainer
-    -Set~Identifier~ scopedTeamIds
-    -Set~Identifier~ scopedFieldIds
-    ~protected GameData()
-    +void setupId(Identifier id)
-    +Identifier getId()
-    +EcsContainer getEcsContainer()
-    +void registerTeam(Identifier teamId)
-    +Set~Identifier~ getTeamIds()
-    +void registerField(Identifier fieldId)
-    +Set~Identifier~ getFieldIds()
-    +Integer getParticipantEntity(UUID uuid)
-    +void addParticipant(UUID uuid, int entityId)
-    +void removeParticipant(UUID uuid)
-    +void reset()
-  }
-  class c_com_myudog_myulib_api_game_core_GameDefinition["GameDefinition"] {
-    -Identifier id
-    ~protected GameDefinition(Identifier id)
-    +Identifier getId()
-  }
-  class c_com_myudog_myulib_api_game_core_GameInstance["GameInstance"] {
-    -int instanceId
-    -C config
-    -D data
-    -GameStateMachine~S~ stateMachine
-    -EventDispatcherImpl eventBus
-    -boolean enabled
-    -long tickCount
-    +int getInstanceId()
-    +Identifier getSessionId()
-    +void setupIdentity(Identifier fullId)
-    +D getData()
-    +EcsContainer getEcsContainer()
-    +Optional~Integer~ getParticipantEntity(ServerPlayer player)
-    +boolean isParticipating(UUID uuid)
-    +S getCurrentState()
-    +boolean transition(S to)
-    +void tick()
-    +void destroy()
-    +boolean isEnabled()
-    +long getTickCount()
-    +C getConfig()
-    +Optional~GameObjectConfig~?~~ getGameObjectConfig(Identifier id)
-  }
-  class c_com_myudog_myulib_api_game_core_GameManager["GameManager"] {
-    -AtomicInteger NEXT_INSTANCE_ID
-    ~private GameManager()
-    +void install()
-    +void register(GameDefinition~?, ?, ?~ definition)
-    +boolean hasDefinition(Identifier gameId)
-    +boolean destroyInstance(int instanceId)
-    +void tickAll()
-  }
-}
+    J0[Command: /myulib:game join] --> J1[GameManager.joinPlayer]
+    J1 --> J2{enabled and initialized?}
+    J2 -- no --> J3[join failed]
+    J2 -- yes --> J4[GameInstance.joinPlayer]
+    J4 --> J5[resolveTeamForJoin + movePlayerToTeam]
+    J5 --> J6[playerToInstanceMap update]
 
-namespace game_logic {
-  class c_com_myudog_myulib_api_game_logic_LogicContracts["LogicContracts"] {
-    ~private LogicContracts()
-  }
-  class c_com_myudog_myulib_api_game_logic_LogicEngine["LogicEngine"] {
-    -List~LogicContracts.LogicRule~S~~ rules
-    +void register(LogicContracts.LogicRule~S~ rule)
-    +void registerAll(Iterable~LogicContracts.LogicRule~S~~ rules)
-    +void clearRules()
-    +List~LogicContracts.LogicRule~S~~ rules()
-  }
-}
+    S0[Command: /myulib:game start] --> S1[GameManager.startInstance]
+    S1 --> S2{enabled and initialized?}
+    S2 -- no --> S3[start failed]
+    S2 -- yes --> S4[GameInstance.start]
+    S4 --> S5[GameDefinition.onStart]
+    S5 --> S6[started = true]
 
-namespace game_object {
-  class c_com_myudog_myulib_api_game_object_GameObjectConfig["GameObjectConfig"] {
-    <<record>>
-  }
-  class c_com_myudog_myulib_api_game_object_GameObjectKind["GameObjectKind"] {
-    <<enumeration>>
-  }
-  class c_com_myudog_myulib_api_game_object_IGameEntity["IGameEntity"] {
-    <<interface>>
-    ~void attachToGame(GameInstance~?, ?, ?~ instance)
-    ~void detachFromGame(GameInstance~?, ?, ?~ instance)
-  }
-}
+    E0[Command: /myulib:game end] --> E1[GameManager.shutdownInstance]
+    E1 --> E2[GameInstance.shutdown]
+    E2 --> E3[GameDefinition.onShutDown]
+    E3 --> E4[GameInstance.clean]
+    E4 --> E5[cleanupRuntimeResources]
+    E5 --> E6[definition.clean + eventBus.clear + data.reset]
+    E6 --> E7[initialized = false, started = false]
+    E7 --> E8[unassignPlayersInInstance]
 
-namespace game_state {
-  class c_com_myudog_myulib_api_game_state_BasicGameStateMachine["BasicGameStateMachine"] {
-    -S initialState
-    -S currentState
-    ~public BasicGameStateMachine(S initialState, Map~S, Set~S~~ allowedTransitions)
-    +S getCurrent()
-    +boolean canTransition(S to)
-    +boolean transitionTo(S to)
-    +void forceTransition(S to)
-    +void reset()
-  }
-  class c_com_myudog_myulib_api_game_state_GameState["GameState"] {
-    <<interface>>
-    ~String name()
-  }
-  class c_com_myudog_myulib_api_game_state_GameStateChangeEvent["GameStateChangeEvent"] {
-    <<record>>
-    +boolean isEntering(S state)
-    +boolean isLeaving(S state)
-  }
-  class c_com_myudog_myulib_api_game_state_GameStateMachine["GameStateMachine"] {
-    <<interface>>
-    ~S getCurrent()
-    ~boolean canTransition(S to)
-    ~boolean transitionTo(S to)
-    ~void forceTransition(S to)
-    ~void reset()
-  }
-}
-
-c_com_myudog_myulib_api_game_core_GameConfig <|-- c_com_myudog_myulib_api_game_core_GameDefinition
-c_com_myudog_myulib_api_game_core_GameConfig <|-- c_com_myudog_myulib_api_game_core_GameInstance
-c_com_myudog_myulib_api_game_state_GameStateMachine <|.. c_com_myudog_myulib_api_game_state_BasicGameStateMachine
-c_com_myudog_myulib_api_game_components_ComponentManager ..> c_com_myudog_myulib_api_game_core_GameInstance
-c_com_myudog_myulib_api_game_core_GameConfig ..> c_com_myudog_myulib_api_game_object_GameObjectConfig
-c_com_myudog_myulib_api_game_core_GameDefinition ..> c_com_myudog_myulib_api_game_state_GameState
-c_com_myudog_myulib_api_game_core_GameDefinition ..> c_com_myudog_myulib_api_game_state_GameStateMachine
-c_com_myudog_myulib_api_game_core_GameInstance ..> c_com_myudog_myulib_api_game_object_GameObjectConfig
-c_com_myudog_myulib_api_game_core_GameInstance ..> c_com_myudog_myulib_api_game_state_GameState
-c_com_myudog_myulib_api_game_core_GameInstance ..> c_com_myudog_myulib_api_game_state_GameStateChangeEvent
-c_com_myudog_myulib_api_game_core_GameInstance ..> c_com_myudog_myulib_api_game_state_GameStateMachine
-c_com_myudog_myulib_api_game_core_GameManager ..> c_com_myudog_myulib_api_game_state_GameState
-c_com_myudog_myulib_api_game_logic_LogicContracts ..> c_com_myudog_myulib_api_game_state_GameState
-c_com_myudog_myulib_api_game_logic_LogicEngine ..> c_com_myudog_myulib_api_game_state_GameState
-c_com_myudog_myulib_api_game_object_IGameEntity ..> c_com_myudog_myulib_api_game_core_GameInstance
-c_com_myudog_myulib_api_game_state_GameState ..> c_com_myudog_myulib_api_game_core_GameInstance
-c_com_myudog_myulib_api_game_state_GameStateChangeEvent ..> c_com_myudog_myulib_api_game_core_GameInstance
+    D0[Command: /myulib:game delete] --> D1[GameManager.destroyInstance]
+    D1 --> D2[GameInstance.destroy]
+    D2 --> D3[clean + enabled = false + remove maps]

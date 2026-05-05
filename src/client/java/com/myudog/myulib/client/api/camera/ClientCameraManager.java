@@ -15,17 +15,11 @@ public final class ClientCameraManager {
 
     public static final ClientCameraManager INSTANCE = new ClientCameraManager();
 
-    
-    private final ClientCameraManager INSTANCE = new ClientCameraManager();
-
     private final CopyOnWriteArrayList<CameraModifier> modifiers = new CopyOnWriteArrayList<>();
 
     private ClientCameraManager() {
     }
 
-    public ClientCameraManager getInstance() {
-        return INSTANCE;
-    }
 
     public void addModifier(CameraModifier modifier) {
         if (modifier != null) {

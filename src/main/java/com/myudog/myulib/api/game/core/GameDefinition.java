@@ -1,32 +1,34 @@
 package com.myudog.myulib.api.game.core;
 
-import com.myudog.myulib.api.game.state.GameState;
-import com.myudog.myulib.api.game.state.GameStateMachine;
-import com.myudog.myulib.internal.event.EventDispatcherImpl;
-import net.minecraft.resources.Identifier;
+import com.myudog.myulib.api.core.BehaviorChain;
+import com.myudog.myulib.api.core.event.EventBus;
+import com.myudog.myulib.api.core.state.IState;
+import com.myudog.myulib.api.core.state.StateMachine;
+import com.myudog.myulib.api.team.TeamColor;
+import com.myudog.myulib.api.team.TeamDefinition;
+import com.myudog.myulib.api.team.TeamManager;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-public abstract class GameDefinition<C extends GameConfig, D extends GameData, S extends GameState> {
-    private final Identifier id;
+public abstract class GameDefinition<C extends GameConfig, D extends GameData, S extends IState<IGameContext>> {
 
-    protected GameDefinition(Identifier id) {
-        this.id = Objects.requireNonNull(id, "id 不得為空");
+    private final UUID uuid;
+    private final BehaviorChain behaviorChain;
+
+    protected GameDefinition(@NotNull UUID uuid) {
+        this.uuid = uuid;
+        behaviorChain = new BehaviorChain();
     }
 
-    public final Identifier getId() {
-        return id;
+    public final UUID uuid() {
+        return uuid;
     }
 
-    public String gameToken() {
-        return id.getPath();
-    }
-
-    public String modToken() {
-        return id.getNamespace();
-    }
 
     // --- 抽象工廠方法 (供開發者實作) ---
 
@@ -38,52 +40,54 @@ public abstract class GameDefinition<C extends GameConfig, D extends GameData, S
     /**
      * 定義這場遊戲的狀態機與狀態流轉規則
      */
-    public abstract GameStateMachine<S> createStateMachine(C config);
+    public abstract StateMachine<S, IGameContext> createStateMachine(C config);
 
     /**
      * 建立房間專屬的事件匯流排。
-     * 🌟 修正：回傳型別改為 EventDispatcherImpl
      */
-    protected abstract EventDispatcherImpl createEventBus();
+    protected abstract EventBus createEventBus();
 
-    public final void init(GameInstance<C, D, S> instance) throws Exception {
-        Objects.requireNonNull(instance, "instance");
-        bindBehavior(instance);
+    // ----------------------------------------------------------------------------------------------------
+
+    protected void bindBehavior(@NotNull GameInstance<C, D, S> instance) throws Exception {
+        TeamDefinition spectatorTeam = new TeamDefinition(
+                instance.getConfig().SPECTATOR_TEAM,
+                Component.translatable("team_spectator"),
+                TeamColor.DARK_GRAY,
+                Map.of(),
+                0
+        );
+        TeamManager.INSTANCE.register(spectatorTeam);
     }
 
-    public final void clean(GameInstance<C, D, S> instance) throws Exception {
-        Objects.requireNonNull(instance, "instance");
-        unbindBehavior(instance);
+    protected void unbindBehavior(@NotNull GameInstance<C, D, S> instance) throws Exception {
+        TeamManager.INSTANCE.unregister(instance.getConfig().SPECTATOR_TEAM);
     }
 
-    protected abstract void bindBehavior(GameInstance<C, D, S> instance) throws Exception;
+    // ----------------------------------------------------------------------------------------------------
 
-    protected abstract void unbindBehavior(GameInstance<C, D, S> instance) throws Exception;
+    /**
+     * 由外部呼叫，並非由狀態機操控事件
+     */
+    public abstract void onStart(@NotNull GameInstance<C, D, S> instance);
 
-    protected Identifier resolveTeamForJoin(GameInstance<C, D, S> instance, UUID playerUuid, Identifier requestedTeamId) {
-        return requestedTeamId;
-    }
+    /**
+     * 由外部呼叫，並非由狀態機操控事件
+     */
+    public abstract void onShutdown(@NotNull GameInstance<C, D, S> instance);
 
-    protected void onStart(GameInstance<C, D, S> instance) throws Exception {
-    }
-
-    protected void onShutDown(GameInstance<C, D, S> instance) throws Exception {
-    }
-
+    // ----------------------------------------------------------------------------------------------------
     // --- 主建構流程 (不可被覆寫) ---
 
-    public final GameInstance<C, D, S> createInstance(int instanceId, C config, ServerLevel level) {
+    public final GameInstance<C, D, S> createInstance(@NotNull C config, ServerLevel level) {
         try {
-            C resolvedConfig = Objects.requireNonNull(config, "傳入的 config 不得為空");
-
-            GameStateMachine<S> stateMachine = Objects.requireNonNull(createStateMachine(resolvedConfig), "createStateMachine() 不得回傳 null");
+            StateMachine<S, IGameContext> stateMachine = Objects.requireNonNull(createStateMachine(config), "createStateMachine() 不得回傳 null");
 
             // 🌟 這裡呼叫 createEventBus() 時，回傳型別與變數宣告現在 100% 吻合了！
-            EventDispatcherImpl eventBus = Objects.requireNonNull(createEventBus(), "createEventBus() 不得回傳 null");
+            EventBus eventBus = Objects.requireNonNull(createEventBus(), "createEventBus() 不得回傳 null");
 
             // 將 eventBus 注入 GameInstance 建構子
-            GameInstance<C, D, S> instance = new GameInstance<>(instanceId, level, this, resolvedConfig, stateMachine, eventBus);
-            return instance;
+            return new GameInstance<>(level, this, config, stateMachine, eventBus);
         }
         catch (Exception e) {
             throw new RuntimeException("創建遊戲實例失敗: " + e.getMessage(), e);
@@ -92,6 +96,8 @@ public abstract class GameDefinition<C extends GameConfig, D extends GameData, S
 
     public final void initInstance(GameInstance<C, D, S> instance) {
         Objects.requireNonNull(instance, "instance 不得為空");
-        instance.init();
+        instance.initialize();
     }
+
+
 }

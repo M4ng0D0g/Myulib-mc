@@ -40,7 +40,11 @@ public final class FieldVisualizationManager {
             };
         }
 
-        public DisplayMode parse(String raw) {
+        public String id() {
+            return token();
+        }
+
+        public static DisplayMode parse(String raw) {
             String token = raw == null ? "" : raw.trim().toLowerCase().replace('_', '-');
             return switch (token) {
                 case "edges", "edges-only" -> EDGES_ONLY;
@@ -138,10 +142,10 @@ public final class FieldVisualizationManager {
             if (distanceToAabb(viewer, field.bounds()) > radius) continue;
 
             visible.add(new HologramDefinition(
-                    field.id(),
+                    field.uuid(),
                     field.dimensionId(),
                     field.bounds(),
-                    field.id().getPath(),
+                    field.uuid().toString(),
                     style
             ));
         }

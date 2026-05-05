@@ -34,7 +34,7 @@ public class MixinLivingEntity {
 //    @Inject(method = "actuallyHurt", at = @At("HEAD"), require = 0)
 //    private void onHurt(ServerLevel level, DamageSource source, float dmg, CallbackInfo ci) {
 //        LivingEntity victim = (LivingEntity) (Object) this;
-//        GameManager.handleEntityDamage(victim, source, dmg);
+//        GameManager.INSTANCE.handleEntityDamage(victim, source, dmg);
 //    }
 
     // 26.1+ hook
@@ -67,7 +67,7 @@ public class MixinLivingEntity {
                             + ",source=" + source.getMsgId() + ",amount=" + amount);
         }
 
-        GameManager.handleEntityDamage(victim, source, amount);
+        GameManager.INSTANCE.handleEntityDamage(victim, source, amount);
     }
 
     @Inject(method = "hurt", at = @At("HEAD"), require = 0)
@@ -89,7 +89,7 @@ public class MixinLivingEntity {
     @Inject(method = "die", at = @At("HEAD"))
     private void onDie(DamageSource damageSource, CallbackInfo ci) {
         LivingEntity victim = (LivingEntity) (Object) this;
-        GameManager.handleEntityDeath(victim, damageSource);
+        GameManager.INSTANCE.handleEntityDeath(victim, damageSource);
     }
 
     @Inject(method = "removeAllEffects", at = @At("HEAD"), cancellable = true)
@@ -99,7 +99,7 @@ public class MixinLivingEntity {
             return;
         }
 
-        ISpatialEffectManager effectManager = GameManager.getGlobalEffectManager();
+        ISpatialEffectManager effectManager = GameManager.INSTANCE.getGlobalEffectManager();
         if (!effectManager.hasAnySpatialEffect(player.getUUID())) {
             return;
         }
@@ -126,7 +126,7 @@ public class MixinLivingEntity {
             return;
         }
 
-        ISpatialEffectManager effectManager = GameManager.getGlobalEffectManager();
+        ISpatialEffectManager effectManager = GameManager.INSTANCE.getGlobalEffectManager();
         if (effectManager.isSpatialEffect(player.getUUID(), effect)) {
             cir.setReturnValue(false);
         }

@@ -1,11 +1,14 @@
 package com.myudog.myulib.api.timer;
 
 import net.minecraft.resources.Identifier;
+import org.jetbrains.annotations.NotNull;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.UUID;
 
 public final class TimerDefinition {
-    public final Identifier id;
+    public final UUID uuid;
     public final long durationTicks;
     public final TimerMode mode;
     public final boolean autoStopOnComplete;
@@ -20,12 +23,26 @@ public final class TimerDefinition {
     public final List<TimerAction> completedActions = new ArrayList<>();
     private int nextBindingId = 1;
 
-    public TimerDefinition(net.minecraft.resources.Identifier id, long durationTicks) { this(id, durationTicks, TimerMode.COUNT_UP, true); }
-    public TimerDefinition(net.minecraft.resources.Identifier id, long durationTicks, TimerMode mode, boolean autoStopOnComplete) {
-        this.id = Objects.requireNonNull(id, "id");
+    public TimerDefinition(@NotNull UUID uuid, long durationTicks) {
+        this(uuid, durationTicks, TimerMode.COUNT_UP, true);
+    }
+    public TimerDefinition(@NotNull String token, long durationTicks) {
+        this(stableUuid(token), durationTicks, TimerMode.COUNT_UP, true);
+    }
+    public TimerDefinition(@NotNull Identifier id, long durationTicks) {
+        this(stableUuid(id.toString()), durationTicks, TimerMode.COUNT_UP, true);
+    }
+    public TimerDefinition(@NotNull UUID uuid, long durationTicks, TimerMode mode, boolean autoStopOnComplete) {
+        this.uuid = Objects.requireNonNull(uuid, "uuid 不得為空");
         this.durationTicks = Math.max(0L, durationTicks);
         this.mode = mode == null ? TimerMode.COUNT_UP : mode;
         this.autoStopOnComplete = autoStopOnComplete;
+    }
+    public TimerDefinition(@NotNull String token, long durationTicks, TimerMode mode, boolean autoStopOnComplete) {
+        this(stableUuid(token), durationTicks, mode, autoStopOnComplete);
+    }
+    public TimerDefinition(@NotNull Identifier id, long durationTicks, TimerMode mode, boolean autoStopOnComplete) {
+        this(stableUuid(id.toString()), durationTicks, mode, autoStopOnComplete);
     }
 
     public TimerDefinition onElapsedTick(long tick, TimerAction action) { return onElapsedTick(tick, action, false); }
@@ -73,5 +90,9 @@ public final class TimerDefinition {
             normalized.add((long) tick);
         }
         return normalized;
+    }
+
+    private static UUID stableUuid(String token) {
+        return UUID.nameUUIDFromBytes(token.getBytes(StandardCharsets.UTF_8));
     }
 }

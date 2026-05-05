@@ -3,8 +3,7 @@ package com.myudog.myulib.api.field;
 import com.myudog.myulib.api.field.storage.NbtFieldStorage;
 import com.myudog.myulib.api.debug.DebugFeature;
 import com.myudog.myulib.api.debug.DebugLogManager;
-import com.myudog.myulib.api.util.ShortIdRegistry;
-import com.myudog.myulib.api.storage.DataStorage;
+import com.myudog.myulib.api.core.storage.DataStorage;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
@@ -12,20 +11,19 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class FieldManager {
 
     public static final FieldManager INSTANCE = new FieldManager();
 
-    
-
     // 🌟 記憶體快取：所有查詢都在此進行，效能極高
-    private final Map<Identifier, FieldDefinition> FIELDS = new ConcurrentHashMap<>();
-    private final ShortIdRegistry ID_REGISTRY = new ShortIdRegistry(6);
+    private final Map<UUID, FieldDefinition> FIELDS = new ConcurrentHashMap<>();
 
     // 🌟 注入的儲存介面
-    private DataStorage<Identifier, FieldDefinition> storage;
+    private DataStorage<UUID, FieldDefinition> storage;
 
     private FieldManager() {}
 
@@ -33,7 +31,7 @@ public final class FieldManager {
         install(new NbtFieldStorage());
     }
 
-    public void install(DataStorage<Identifier, FieldDefinition> storageProvider) {
+    public void install(DataStorage<UUID, FieldDefinition> storageProvider) {
         storage = storageProvider;
 
         // 1. 伺服器啟動時，初始化儲存並載入記憶體
@@ -41,13 +39,9 @@ public final class FieldManager {
             if (storage != null) {
                 storage.initialize(server);
                 FIELDS.clear();
-                ID_REGISTRY.clear();
-                Map<Identifier, FieldDefinition> loaded = storage.loadAll();
+                Map<UUID, FieldDefinition> loaded = storage.loadAll();
                 if (loaded != null) {
                     FIELDS.putAll(loaded);
-                    for (Identifier id : loaded.keySet()) {
-                        ID_REGISTRY.generateAndBind(id);
-                    }
                 }
                 System.out.println("[Myulib] FieldManager 已成功載入 " + FIELDS.size() + " 個區域。");
             }
@@ -69,14 +63,13 @@ public final class FieldManager {
         Objects.requireNonNull(field, "field 不得為空");
 
         if (!validate(field)) {
-            throw new IllegalArgumentException("FieldDefinition 驗證失敗: " + field.id());
+            throw new IllegalArgumentException("FieldDefinition 驗證失敗: " + field.uuid());
         }
 
-        FIELDS.put(field.id(), field);
-        String shortId = ID_REGISTRY.generateAndBind(field.id());
-        if (storage != null) storage.save(field.id(), field); // 同步至資料庫
+        FIELDS.put(field.uuid(), field);
+        if (storage != null) storage.save(field.uuid(), field);
         DebugLogManager.INSTANCE.log(DebugFeature.FIELD,
-                "register id=" + field.id() + ",shortId=" + shortId + ",dim=" + field.dimensionId()
+                "register uuid=" + field.uuid() + ",dim=" + field.dimensionId()
                         + ",min=(" + field.bounds().minX + "," + field.bounds().minY + "," + field.bounds().minZ + ")"
                         + ",max=(" + field.bounds().maxX + "," + field.bounds().maxY + "," + field.bounds().maxZ + ")");
 
@@ -84,11 +77,11 @@ public final class FieldManager {
     }
 
     public boolean validate(FieldDefinition field) {
-        if (field == null || field.id() == null || field.dimensionId() == null || field.bounds() == null) {
+        if (field == null || field.uuid() == null || field.dimensionId() == null || field.bounds() == null) {
             return false;
         }
 
-        if (FIELDS.containsKey(field.id())) {
+        if (FIELDS.containsKey(field.uuid())) {
             return false;
         }
 
@@ -104,27 +97,26 @@ public final class FieldManager {
         return true;
     }
 
+    public void unregister(UUID fieldUuid) {
+        DebugLogManager.INSTANCE.log(DebugFeature.FIELD, "unregister uuid=" + fieldUuid);
+        if (storage != null) storage.delete(fieldUuid);
+        FIELDS.remove(fieldUuid);
+    }
+
     public void unregister(Identifier fieldId) {
-        DebugLogManager.INSTANCE.log(DebugFeature.FIELD, "unregister id=" + fieldId + ",shortId=" + ID_REGISTRY.getShortId(fieldId));
-        if (storage != null) storage.delete(fieldId);
-        FIELDS.remove(fieldId);
-        ID_REGISTRY.unbind(fieldId);
+        unregister(stableUuid(fieldId.toString()));
+    }
+
+    public FieldDefinition get(UUID fieldUuid) {
+        return FIELDS.get(fieldUuid);
     }
 
     public FieldDefinition get(Identifier fieldId) {
-        return FIELDS.get(fieldId);
+        return FIELDS.get(stableUuid(fieldId.toString()));
     }
 
-    public static Map<Identifier, FieldDefinition> all() {
-        return Map.copyOf(fields);
-    }
-
-    public Identifier resolveShortId(String shortId) {
-        return ID_REGISTRY.getFullId(shortId);
-    }
-
-    public String getShortIdOf(Identifier fullId) {
-        return ID_REGISTRY.getShortId(fullId);
+    public Map<UUID, FieldDefinition> all() {
+        return Map.copyOf(FIELDS);
     }
 
     public Optional<FieldDefinition> findAt(Identifier dimensionId, Vec3 pos) {
@@ -141,13 +133,16 @@ public final class FieldManager {
     public void save() {
         if (storage != null) {
             for (FieldDefinition field : FIELDS.values()) {
-                storage.save(field.id(), field);
+                storage.save(field.uuid(), field);
             }
         }
     }
 
     public void clear() {
         FIELDS.clear();
-        ID_REGISTRY.clear();
+    }
+
+    private static UUID stableUuid(String token) {
+        return UUID.nameUUIDFromBytes(token.getBytes(StandardCharsets.UTF_8));
     }
 }

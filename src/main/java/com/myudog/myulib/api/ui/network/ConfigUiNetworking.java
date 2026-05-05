@@ -255,7 +255,6 @@ public final class ConfigUiNetworking {
         for (RoleGroupDefinition group : sortedGroups) {
             JsonObject item = new JsonObject();
             item.addProperty("id", group.id().toString());
-            item.addProperty("path", group.id().getPath());
             item.addProperty("priority", group.priority());
             item.addProperty("memberCount", group.members().size());
             roleGroups.add(item);

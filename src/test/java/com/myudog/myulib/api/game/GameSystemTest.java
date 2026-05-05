@@ -1,11 +1,9 @@
 package com.myudog.myulib.api.game;
+import com.myudog.myulib.api.core.event.EventBus;
 import com.myudog.myulib.api.game.core.*;
-import com.myudog.myulib.api.game.object.GameObjectKind;
-import com.myudog.myulib.api.game.state.BasicGameStateMachine;
-import com.myudog.myulib.api.game.state.GameState;
-import com.myudog.myulib.api.game.state.GameStateMachine;
-import com.myudog.myulib.internal.event.EventDispatcherImpl;
+import com.myudog.myulib.api.object.ObjectKind;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -27,7 +25,7 @@ final class GameSystemTest {
     private static final AtomicInteger TICK_CALLS = new AtomicInteger();
     private static final AtomicInteger EXIT_CALLS = new AtomicInteger();
 
-    private enum TestState implements GameState {
+    private enum TestState implements com.myudog.myulib.api.core.state.IState {
         PREPARE,
         ACTIVE,
         FINISHED;
@@ -76,16 +74,16 @@ final class GameSystemTest {
             );
         }
         @Override
-        protected EventDispatcherImpl createEventBus() {
-            return new EventDispatcherImpl();
+        protected EventBus createEventBus() {
+            return new EventBus();
         }
 
         @Override
-        protected void bindBehavior(GameInstance<GameConfig, TestGameData, TestState> instance) {
+        protected void bindBehavior(@NonNull GameInstance<GameConfig, TestGameData, TestState> instance) {
         }
 
         @Override
-        protected void unbindBehavior(GameInstance<GameConfig, TestGameData, TestState> instance) {
+        protected void unbindBehavior(@NonNull GameInstance<GameConfig, TestGameData, TestState> instance) {
         }
 
         @Override
@@ -119,7 +117,7 @@ final class GameSystemTest {
                     null,
                     GameConfig.empty(),
                     new BasicGameStateMachine<>(TestState.PREPARE, Map.of()),
-                    new EventDispatcherImpl()
+                    new EventBus()
             );
             this.definition = definition;
         }
@@ -232,14 +230,14 @@ final class GameSystemTest {
         TestGameData data = new TestGameData();
         assertDoesNotThrow(() -> data.init(config), "GameData should initialize with empty config without throwing");
         assertEquals(List.of(
-                GameObjectKind.LOGIC,
-                GameObjectKind.MINEABLE,
-                GameObjectKind.ATTACKABLE,
-                GameObjectKind.INTERACTABLE,
-                GameObjectKind.PROXIMITY_TRIGGER,
-                GameObjectKind.DECORATIVE,
-                GameObjectKind.CUSTOM
-        ), List.of(GameObjectKind.values()), "GameObjectKind should expose the current kinds in declaration order");
+                ObjectKind.LOGIC,
+                ObjectKind.MINEABLE,
+                ObjectKind.ATTACKABLE,
+                ObjectKind.INTERACTABLE,
+                ObjectKind.PROXIMITY_TRIGGER,
+                ObjectKind.DECORATIVE,
+                ObjectKind.CUSTOM
+        ), List.of(ObjectKind.values()), "GameObjectKind should expose the current kinds in declaration order");
         BasicGameStateMachine<TestState> machine = new BasicGameStateMachine<>(
                 TestState.PREPARE,
                 Map.of(
@@ -261,17 +259,17 @@ final class GameSystemTest {
         Identifier gameId = Identifier.fromNamespaceAndPath("tests", "arena");
         TestGameDefinition definition = new TestGameDefinition(gameId);
         try {
-            GameManager.register(definition);
-            assertSame(definition, GameManager.definition(gameId), "Registered definition should be retrievable");
-            assertTrue(GameManager.hasDefinition(gameId), "GameManager should report the registered definition");
+            GameManager.INSTANCE.register(definition);
+            assertSame(definition, GameManager.INSTANCE.definition(gameId), "Registered definition should be retrievable");
+            assertTrue(GameManager.INSTANCE.hasDefinition(gameId), "GameManager should report the registered definition");
         } finally {
-            GameManager.unregister(gameId);
+            GameManager.INSTANCE.unregister(gameId);
         }
     }
 
     @Test
     void endInstanceRecyclesResourcesAndClearsPlayerMappingsWhenOnEndSucceeds() {
-        String token = "end_success_room";
+        Identifier id = "end_success_room";
         int instanceId = 31_001;
         UUID playerId = UUID.randomUUID();
         TestGameDefinition definition = new TestGameDefinition(Identifier.fromNamespaceAndPath("tests", "end_success"));
@@ -284,15 +282,15 @@ final class GameSystemTest {
             instances.put(instanceId, instance);
             tokens.put(token, instanceId);
             players.put(playerId, instanceId);
-            assertTrue(GameManager.instanceOf(playerId).isPresent(), "Player mapping should exist before end");
+            assertTrue(GameManager.INSTANCE.instanceOf(playerId).isPresent(), "Player mapping should exist before end");
 
-            assertTrue(GameManager.shutdownInstance(token), "shutdownInstance(token) should succeed for a valid enabled instance");
+            assertTrue(GameManager.INSTANCE.shutdownInstance(token), "shutdownInstance(token) should succeed for a valid enabled instance");
             assertEquals(1, definition.onEndCalls(), "Definition onEnd should be invoked exactly once");
-            assertNotNull(GameManager.getInstance(instanceId), "Ended instance should remain registered for next init cycle");
-            assertTrue(GameManager.resolveInstanceId(token).isPresent(), "Ended token should remain resolvable for next init cycle");
+            assertNotNull(GameManager.INSTANCE.getInstance(instanceId), "Ended instance should remain registered for next init cycle");
+            assertTrue(GameManager.INSTANCE.resolveInstanceId(token).isPresent(), "Ended token should remain resolvable for next init cycle");
             assertFalse(instance.isInitialized(), "Ended instance should require init before the next join/start");
             assertFalse(instance.isStarted(), "Ended instance should not remain in started state");
-            assertTrue(GameManager.instanceOf(playerId).isEmpty(), "Player-to-instance mapping should be cleaned when ending");
+            assertTrue(GameManager.INSTANCE.instanceOf(playerId).isEmpty(), "Player-to-instance mapping should be cleaned when ending");
         } finally {
             instances.remove(instanceId);
             tokens.remove(token);
@@ -313,8 +311,8 @@ final class GameSystemTest {
             instance.setStarted(false);
             instances.put(instanceId, instance);
 
-            assertFalse(GameManager.joinPlayer(instanceId, playerId, null), "join should fail before init");
-            assertFalse(GameManager.startInstance(instanceId), "start should fail before init");
+            assertFalse(GameManager.INSTANCE.joinPlayer(instanceId, playerId, null), "join should fail before init");
+            assertFalse(GameManager.INSTANCE.startInstance(instanceId), "start should fail before init");
 
         } finally {
             instances.remove(instanceId);
@@ -323,7 +321,7 @@ final class GameSystemTest {
 
     @Test
     void endInstanceKeepsInstanceWhenOnEndThrows() {
-        String token = "end_failure_room";
+        Identifier id = "end_failure_room";
         int instanceId = 31_002;
         TestGameDefinition definition = new TestGameDefinition(Identifier.fromNamespaceAndPath("tests", "end_failure"), true);
         StubGameInstance instance = StubGameInstance.create(instanceId, definition);
@@ -335,12 +333,12 @@ final class GameSystemTest {
             tokens.put(token, instanceId);
 
             RuntimeException ex = assertThrows(RuntimeException.class,
-                    () -> GameManager.shutdownInstance(instanceId),
+                    () -> GameManager.INSTANCE.shutdownInstance(instanceId),
                     "shutdownInstance should propagate onShutDown failure as RuntimeException");
             assertTrue(ex.getMessage().contains("強制結束遊戲失敗"), "Exception message should indicate force-end failure");
             assertEquals(1, definition.onEndCalls(), "Definition onEnd should still be attempted once");
-            assertNotNull(GameManager.getInstance(instanceId), "Failed end should keep the instance registered");
-            assertTrue(GameManager.resolveInstanceId(token).isPresent(), "Failed end should keep instance token mapping");
+            assertNotNull(GameManager.INSTANCE.getInstance(instanceId), "Failed end should keep the instance registered");
+            assertTrue(GameManager.INSTANCE.resolveInstanceId(token).isPresent(), "Failed end should keep instance token mapping");
         } finally {
             instances.remove(instanceId);
             tokens.remove(token);

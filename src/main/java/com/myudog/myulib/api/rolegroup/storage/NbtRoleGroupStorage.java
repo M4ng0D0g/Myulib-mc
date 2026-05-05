@@ -26,7 +26,7 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
     private static final String GROUPS_KEY = "groups";
 
     private Path storageFile;
-    private final Map<Identifier, RoleGroupDefinition> fileMirror = new ConcurrentHashMap<>();
+    private final Map<UUID, RoleGroupDefinition> fileMirror = new ConcurrentHashMap<>();
 
     // =====================================================================
     // 1. RoleGroupStorage 介面實作
@@ -50,7 +50,7 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
         }
     }
 
-    private Map<Identifier, RoleGroupDefinition> loadAll() {
+    private Map<UUID, RoleGroupDefinition> loadAll() {
         fileMirror.clear();
         if (storageFile == null || !Files.exists(storageFile)) {
             return new HashMap<>();
@@ -75,7 +75,7 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
                     Tag entry = membershipsCompound.get(playerKey);
                     if (entry instanceof ListTag list) {
                         for (int i = 0; i < list.size(); i++) {
-                            Identifier groupId = parseGroupIdCompat(list.getString(i).orElseThrow());
+                            UUID groupId = parseGroupIdCompat(list.getString(i).orElseThrow());
                             RoleGroupDefinition def = fileMirror.get(groupId);
                             if (def != null) {
                                 // 將舊版玩家 UUID 塞入新版的 Group Members 中
@@ -103,25 +103,25 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
         return new HashMap<>(fileMirror);
     }
 
-    private void save(Identifier id, RoleGroupDefinition data) {
+    private void save(UUID id, RoleGroupDefinition data) {
         fileMirror.put(id, data);
         saveToFile();
     }
 
-    private void delete(Identifier id) {
+    private void delete(UUID id) {
         if (fileMirror.remove(id) != null) {
             saveToFile();
         }
     }
 
     @Override
-    public Map<Identifier, RoleGroupDefinition> loadGroups() {
+    public Map<UUID, RoleGroupDefinition> loadGroups() {
         return loadAll();
     }
 
     @Override
-    public Map<UUID, Set<Identifier>> loadAssignments() {
-        Map<UUID, Set<Identifier>> assignments = new LinkedHashMap<>();
+    public Map<UUID, Set<UUID>> loadAssignments() {
+        Map<UUID, Set<UUID>> assignments = new LinkedHashMap<>();
         for (RoleGroupDefinition group : loadAll().values()) {
             for (UUID member : group.members()) {
                 assignments.computeIfAbsent(member, ignored -> new LinkedHashSet<>()).add(group.id());
@@ -136,16 +136,16 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
     }
 
     @Override
-    public void deleteGroup(Identifier groupId) {
+    public void deleteGroup(UUID groupId) {
         delete(groupId);
     }
 
     @Override
-    public void saveAssignments(UUID playerId, Set<Identifier> groupIds) {
+    public void saveAssignments(UUID playerId, Set<UUID> groupIds) {
         if (playerId == null) {
             return;
         }
-        for (Map.Entry<Identifier, RoleGroupDefinition> entry : new ArrayList<>(fileMirror.entrySet())) {
+        for (Map.Entry<UUID, RoleGroupDefinition> entry : new ArrayList<>(fileMirror.entrySet())) {
             RoleGroupDefinition current = entry.getValue();
             Set<UUID> members = new LinkedHashSet<>(current.members());
             boolean shouldContain = groupIds != null && groupIds.contains(entry.getKey());
@@ -234,14 +234,17 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
         return new RoleGroupDefinition(parseGroupIdCompat(id), Component.literal(displayName), priority, metadata, members);
     }
 
-    private static Identifier parseGroupIdCompat(String rawId) {
+    private static UUID parseGroupIdCompat(String rawId) {
         if (rawId == null || rawId.isBlank()) {
-            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "everyone");
+            return UUID.nameUUIDFromBytes(("myulib:everyone").getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
-        if (!rawId.contains(":")) {
-            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, rawId);
+        try {
+            // Try parsing as UUID directly
+            return UUID.fromString(rawId);
+        } catch (IllegalArgumentException e) {
+            // Fall back to stable UUID generation from string
+            return UUID.nameUUIDFromBytes(rawId.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
-        return Identifier.parse(rawId);
     }
 
     // =====================================================================

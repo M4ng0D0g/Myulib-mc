@@ -55,7 +55,7 @@ public class MixinPlayerInteractionManager {
             return;
         }
 
-        boolean canceled = GameManager.handleBlockBreak(player, pos, this.level);
+        boolean canceled = GameManager.INSTANCE.handleBlockBreak(player, pos, this.level);
         if (canceled) {
             cir.setReturnValue(false);
             DebugTraceManager.INSTANCE.end(player, "result=GAME_CONSUMED");
@@ -82,7 +82,7 @@ public class MixinPlayerInteractionManager {
             return;
         }
 
-        boolean canceled = GameManager.handleBlockInteract(player, hitResult.getBlockPos(), this.level);
+        boolean canceled = GameManager.INSTANCE.handleBlockInteract(player, hitResult.getBlockPos(), this.level);
         if (canceled) {
             cir.setReturnValue(InteractionResult.SUCCESS);
             DebugTraceManager.INSTANCE.end(player, "result=GAME_CONSUMED");

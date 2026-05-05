@@ -12,16 +12,16 @@ final class TeamManagerTest {
     @Test
     void teamIdsCanBeScopedByGameAndRemovedWithGameCleanup() {
         TeamManager.INSTANCE.clear();
-        Identifier gameId = Identifier.fromNamespaceAndPath("myulib", "respawn_game");
+        Identifier gameId = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "respawn_game");
         TeamDefinition team = new TeamDefinition(
-                Identifier.fromNamespaceAndPath("myulib", "blue"),
+                Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "blue"),
                 Component.translatable("myulib.test.team.blue"),
                 TeamColor.BLUE,
                 new EnumMap<>(TeamFlag.class),
                 1
         );
         TeamDefinition scoped = TeamManager.INSTANCE.register(gameId, team);
-        assertEquals(Identifier.fromNamespaceAndPath("myulib", "respawn_game_blue"), scoped.id(), "Scoped team id should include the game path prefix");
+        assertEquals(Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "respawn_game_blue"), scoped.id(), "Scoped team id should include the game path prefix");
         assertEquals(1, TeamManager.INSTANCE.all(gameId).size(), "Exactly one team should be registered for the game");
         assertEquals(scoped, TeamManager.INSTANCE.get(scoped.id()), "Registered scoped team should be retrievable");
         UUID playerId = UUID.fromString("00000000-0000-0000-0000-000000000999");
@@ -38,7 +38,7 @@ final class TeamManagerTest {
     @Test
     void playerLimitZeroMeansUnlimited() {
         TeamManager.INSTANCE.clear();
-        Identifier teamId = Identifier.fromNamespaceAndPath("myulib", "unlimited");
+        Identifier teamId = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "unlimited");
         TeamManager.INSTANCE.register(new TeamDefinition(
                 teamId,
                 Component.translatable("myulib.test.team.unlimited"),

@@ -2,7 +2,7 @@ package com.myudog.myulib.api.field.storage;
 
 import com.myudog.myulib.Myulib;
 import com.myudog.myulib.api.field.FieldDefinition;
-import com.myudog.myulib.api.storage.DataStorage;
+import com.myudog.myulib.api.core.storage.DataStorage;
 import com.myudog.myulib.api.util.NbtIoHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.DoubleTag;
@@ -15,18 +15,15 @@ import net.minecraft.world.phys.AABB;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class NbtFieldStorage implements DataStorage<Identifier, FieldDefinition> {
+public class NbtFieldStorage implements DataStorage<UUID, FieldDefinition> {
     private static final String FILE_NAME = "fields.dat";
     private static final String FIELDS_KEY = "fields";
 
     private Path storageFile;
-    private final Map<Identifier, FieldDefinition> fileMirror = new ConcurrentHashMap<>();
+    private final Map<UUID, FieldDefinition> fileMirror = new ConcurrentHashMap<>();
 
     @Override
     public void initialize(MinecraftServer server) {
@@ -44,7 +41,7 @@ public class NbtFieldStorage implements DataStorage<Identifier, FieldDefinition>
     }
 
     @Override
-    public Map<Identifier, FieldDefinition> loadAll() {
+    public Map<UUID, FieldDefinition> loadAll() {
         fileMirror.clear();
         if (storageFile == null || !Files.exists(storageFile)) {
             return new HashMap<>();
@@ -65,13 +62,13 @@ public class NbtFieldStorage implements DataStorage<Identifier, FieldDefinition>
     }
 
     @Override
-    public void save(Identifier id, FieldDefinition data) {
+    public void save(UUID id, FieldDefinition data) {
         fileMirror.put(id, data);
         saveToFile();
     }
 
     @Override
-    public void delete(Identifier id) {
+    public void delete(UUID id) {
         if (fileMirror.remove(id) != null) {
             saveToFile();
         }

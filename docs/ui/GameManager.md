@@ -9,4 +9,4 @@
 - `GameState`
 - `GameStateMachine`
 ## Notes
-- Game objects live under `com.myudog.myulib.api.game.object`.
+- Game objects live under `com.myudog.myulib.api.object`.

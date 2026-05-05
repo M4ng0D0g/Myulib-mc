@@ -1,5 +1,6 @@
 package com.myudog.myulib.api.permission;
 
+import com.myudog.myulib.Myulib;
 import com.myudog.myulib.api.field.FieldDefinition;
 import com.myudog.myulib.api.field.FieldManager;
 import com.myudog.myulib.api.debug.DebugFeature;
@@ -11,6 +12,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public final class PermissionGate {
     private PermissionGate() {
@@ -36,13 +38,14 @@ public final class PermissionGate {
         Identifier dimId = player.level().dimension().identifier();
         Optional<FieldDefinition> field = FieldManager.INSTANCE.findAt(dimId, resolvedPosition);
         var groups = RoleGroupManager.INSTANCE.getSortedGroupIdsOf(player.getUUID());
-        Identifier fieldId = field.map(FieldDefinition::id).orElse(null);
+        // Convert UUID fieldId to Identifier for PermissionManager
+        Identifier fieldIdentifier = field.isPresent() ? Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "field/" + field.get().id()) : null;
 
         PermissionDecision decision = PermissionManager.INSTANCE.evaluate(
                 player.getUUID(),
                 groups,
                 action,
-                fieldId,
+                fieldIdentifier,
                 dimId
         );
 
@@ -52,7 +55,7 @@ public final class PermissionGate {
                     player.getUUID(),
                     groups,
                     PermissionAction.USE_ITEM,
-                    fieldId,
+                    fieldIdentifier,
                     dimId
             );
             if (useItemDecision == PermissionDecision.DENY) {
@@ -65,7 +68,7 @@ public final class PermissionGate {
                         + ",action=" + action
                         + ",decision=" + decision
                         + ",groups=" + String.join("|", groups)
-                        + ",field=" + field.map(FieldDefinition::id).map(Identifier::toString).orElse("-")
+                        + ",field=" + (fieldIdentifier != null ? fieldIdentifier.toString() : "-")
                         + ",dim=" + dimId
                         + ",pos=(" + String.format("%.2f", resolvedPosition.x) + ","
                         + String.format("%.2f", resolvedPosition.y) + ","

@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.team.storage;
 
 import com.myudog.myulib.Myulib;
-import com.myudog.myulib.api.storage.DataStorage;
+import com.myudog.myulib.api.core.storage.DataStorage;
 import com.myudog.myulib.api.team.TeamDefinition;
 import com.myudog.myulib.api.team.TeamColor;
 import com.myudog.myulib.api.team.TeamFlag;
@@ -15,7 +15,6 @@ import net.minecraft.server.MinecraftServer;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 實作 DataStorage 的 NBT 隊伍儲存庫。
  * 負責將 TeamDefinition 序列化並透過反射安全地寫入實體 NBT 檔案。
  */
-public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
+public class NbtTeamStorage implements DataStorage<UUID, TeamDefinition> {
 
     private static final String FILE_NAME = "teams.dat";
     private static final String TEAMS_KEY = "teams";
@@ -31,7 +30,7 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
     private Path storageFile;
 
     // 檔案鏡像快取：用於在 save/delete 單筆資料時，能快速重寫整個檔案
-    private final Map<Identifier, TeamDefinition> fileMirror = new ConcurrentHashMap<>();
+    private final Map<UUID, TeamDefinition> fileMirror = new ConcurrentHashMap<>();
 
     // =====================================================================
     // 1. DataStorage 介面實作
@@ -52,7 +51,7 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
     }
 
     @Override
-    public Map<Identifier, TeamDefinition> loadAll() {
+    public Map<UUID, TeamDefinition> loadAll() {
         fileMirror.clear();
         if (storageFile == null || !Files.exists(storageFile)) {
             return new HashMap<>(); // 檔案不存在，回傳空資料
@@ -65,7 +64,7 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
             if (teamsElement instanceof ListTag list) {
                 for (int i = 0; i < list.size(); i++) {
                     TeamDefinition team = readTeam(list.getCompound(i).orElseThrow());
-                    fileMirror.put(team.id(), team);
+                    fileMirror.put(team.uuid(), team);
                 }
             }
         } catch (Exception e) {
@@ -77,14 +76,14 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
     }
 
     @Override
-    public void save(Identifier id, TeamDefinition data) {
-        fileMirror.put(id, data);
+    public void save(UUID uuid, TeamDefinition data) {
+        fileMirror.put(uuid, data);
         saveToFile();
     }
 
     @Override
-    public void delete(Identifier id) {
-        if (fileMirror.remove(id) != null) {
+    public void delete(UUID uuid) {
+        if (fileMirror.remove(uuid) != null) {
             saveToFile();
         }
     }
@@ -112,7 +111,7 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
 
     private CompoundTag writeTeam(TeamDefinition team) {
         CompoundTag tag = new CompoundTag();
-        tag.putString("id", team.id().toString());
+        tag.putString("uuid", team.uuid().toString());
         tag.putString("displayName", team.translationKey().getString());
 
         tag.putString("color", team.color().name());
@@ -128,10 +127,20 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
     }
 
     private TeamDefinition readTeam(CompoundTag tag) {
-        String idStr = tag.getString("id").orElse("");
-        Identifier id = Identifier.parse(idStr);
+        String uuidStr = tag.getString("uuid").orElse("");
+        UUID teamUuid;
+        try {
+            if (uuidStr.isBlank()) {
+                teamUuid = UUID.randomUUID(); // 或者 return null 讓上層過濾掉
+            } else {
+                teamUuid = UUID.fromString(uuidStr);
+            }
+        } catch (IllegalArgumentException e) {
+            System.err.println("[MyuLib] 警告：發現無效的 Team UUID，已重新生成：" + uuidStr);
+            teamUuid = UUID.randomUUID();
+        }
 
-        String displayNameStr = tag.getString("displayName").orElse(idStr);
+        String displayNameStr = tag.getString("displayName").orElse(uuidStr);
         MutableComponent displayName = Component.literal(displayNameStr);
         TeamColor color = TeamColor.DEFAULT;
         String colorName = tag.getString("color").orElse(TeamColor.DEFAULT.name());
@@ -154,7 +163,7 @@ public class NbtTeamStorage implements DataStorage<Identifier, TeamDefinition> {
         }
 
         int playerLimit = Math.max(0, tag.getInt("playerLimit").orElse(0));
-        return new TeamDefinition(id, displayName, color, flags, playerLimit);
+        return new TeamDefinition(teamUuid, displayName, color, flags, playerLimit);
     }
 
     // =====================================================================

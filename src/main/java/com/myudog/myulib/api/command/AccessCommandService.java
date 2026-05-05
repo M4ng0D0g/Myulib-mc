@@ -19,9 +19,7 @@ import com.myudog.myulib.api.hologram.HologramManager;
 import com.myudog.myulib.api.hologram.HologramFeature;
 import com.myudog.myulib.api.hologram.network.HologramNetworking;
 import com.myudog.myulib.api.game.core.GameInstance;
-import com.myudog.myulib.api.game.core.GameConfig;
 import com.myudog.myulib.api.game.core.GameManager;
-import com.myudog.myulib.api.game.examples.TicTacToeGameDefinition;
 import com.myudog.myulib.api.permission.PermissionAction;
 import com.myudog.myulib.api.permission.PermissionDecision;
 import com.myudog.myulib.api.permission.PermissionManager;
@@ -55,8 +53,7 @@ import java.util.UUID;
 
 public class AccessCommandService {
     public static final String COMMAND_PREFIX = Myulib.MOD_ID + ":";
-    private static final Set<Identifier> TRACKED_TIMERS = new LinkedHashSet<>();
-    private static final Identifier TICTACTOE_BLUE_TEAM_ID = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "tictactoe_blue");
+    private static final Set<UUID> TRACKED_TIMERS = new LinkedHashSet<>();
 
     public static void registerDefaults() {
         registerLocalCommands();
@@ -96,55 +93,7 @@ public class AccessCommandService {
         });
         CommandRegistry.register(COMMAND_PREFIX + "rolegroup:count", context -> CommandResult.success("rolegroup=" + RoleGroupManager.INSTANCE.groups().size()));
         CommandRegistry.register(COMMAND_PREFIX + "team:count", context -> CommandResult.success("team=" + TeamManager.INSTANCE.all().size()));
-        CommandRegistry.register(COMMAND_PREFIX + "game:count", context -> CommandResult.success("game_instance=" + GameManager.getInstances().size()));
-        CommandRegistry.register(COMMAND_PREFIX + "game:init", context -> {
-            String token = context.arguments().getOrDefault("id", "");
-            var resolved = GameManager.resolveInstanceId(token);
-            if (resolved.isEmpty()) {
-                return CommandResult.failure("game=not_found");
-            }
-            try {
-                int instanceId = resolved.getAsInt();
-                boolean initialized = GameManager.initInstance(instanceId);
-                return initialized
-                        ? CommandResult.success("game=initialized:" + instanceId)
-                        : CommandResult.failure("game=already_initialized_or_not_found");
-            } catch (IllegalArgumentException ex) {
-                return CommandResult.failure("game=init_invalid_config:" + ex.getMessage());
-            } catch (Exception ex) {
-                return CommandResult.failure("game=init_failed:" + ex.getClass().getSimpleName());
-            }
-        });
-        CommandRegistry.register(COMMAND_PREFIX + "game:start", context -> {
-            String token = context.arguments().getOrDefault("id", "");
-            var resolved = GameManager.resolveInstanceId(token);
-            if (resolved.isEmpty()) {
-                return CommandResult.failure("game=not_found");
-            }
-            try {
-                int instanceId = resolved.getAsInt();
-                boolean started = GameManager.startInstance(instanceId);
-                return started
-                        ? CommandResult.success("game=started:" + instanceId)
-                        : CommandResult.failure("game=already_started_or_not_found");
-            } catch (IllegalArgumentException ex) {
-                return CommandResult.failure("game=init_invalid_config:" + ex.getMessage());
-            } catch (Exception ex) {
-                return CommandResult.failure("game=start_failed:" + ex.getClass().getSimpleName());
-            }
-        });
-        CommandRegistry.register(COMMAND_PREFIX + "game:end", context -> {
-            String token = context.arguments().getOrDefault("id", "");
-            var resolved = GameManager.resolveInstanceId(token);
-            if (resolved.isEmpty()) {
-                return CommandResult.failure("game=not_found");
-            }
-            int instanceId = resolved.getAsInt();
-            boolean ended = GameManager.shutdownInstance(instanceId);
-            return ended
-                    ? CommandResult.success("game=ended:" + instanceId)
-                    : CommandResult.failure("game=end_failed_or_not_found");
-        });
+        // game commands removed - GameManager API changed
         CommandRegistry.register(COMMAND_PREFIX + "timer:count", context -> CommandResult.success("timer=" + TimerManager.INSTANCE.timerDefinitionCount() + ",instance=" + TimerManager.INSTANCE.timerInstanceCount()));
         CommandRegistry.register(COMMAND_PREFIX + "camera:status", context -> CommandResult.success("camera_bridge_ready"));
         CommandRegistry.register(COMMAND_PREFIX + "control:status", context -> CommandResult.success("control_bindings=" + ControlManager.INSTANCE.controlledCount() + ",input_buffer=" + ControlManager.INSTANCE.bufferedInputCount()));
@@ -158,18 +107,10 @@ public class AccessCommandService {
     }
 
     private static void registerLocalGameReadMirror() {
-        CommandRegistry.register(COMMAND_PREFIX + "game:read", context -> {
-            String token = context.arguments().getOrDefault("id", "");
-            GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-            if (instance == null) {
-                return CommandResult.failure("game=not_found");
-            }
-            int instanceId = instance.getInstanceId();
-            return CommandResult.success("game=instance:" + instanceId
-                    + ",enabled:" + instance.isEnabled()
-                    + ",initialized:" + instance.isInitialized()
-                    + ",started:" + instance.isStarted());
-        });
+        // Game instance commands disabled - needs reimplementation with new UUID-based API
+        CommandRegistry.register(COMMAND_PREFIX + "game:read", context -> 
+            CommandResult.failure("game_commands_not_yet_implemented")
+        );
     }
 
     private static void registerLegacyBaseCommand(CommandDispatcher<CommandSourceStack> dispatcher, String rootLiteral) {
@@ -186,7 +127,7 @@ public class AccessCommandService {
         registerPermissionCrud(dispatcher);
         registerRoleGroupCrud(dispatcher);
         registerTeamCrud(dispatcher);
-        registerGameCrud(dispatcher);
+        // registerGameCrud(dispatcher); // TODO: Reimplement with new GameManager API
         registerTimerCrud(dispatcher);
         registerControlCrud(dispatcher);
         registerDebugCommands(dispatcher);
@@ -286,8 +227,7 @@ public class AccessCommandService {
                                                         .then(Commands.argument("y2", DoubleArgumentType.doubleArg())
                                                                 .then(Commands.argument("z2", DoubleArgumentType.doubleArg())
                                                                         .executes(context -> {
-                                                                            Identifier fieldId = Identifier.parse(StringArgumentType.getString(context, "id"));
-                                                                            fieldId = toMyulibIdentifier(fieldId.toString());
+                                                                            String fieldToken = StringArgumentType.getString(context, "id");
                                                                             Identifier dimId = context.getSource().getLevel().dimension().identifier();
                                                                             double x1 = DoubleArgumentType.getDouble(context, "x1");
                                                                             double y1 = DoubleArgumentType.getDouble(context, "y1");
@@ -296,15 +236,17 @@ public class AccessCommandService {
                                                                             double y2 = DoubleArgumentType.getDouble(context, "y2");
                                                                             double z2 = DoubleArgumentType.getDouble(context, "z2");
                                                                             AABB bounds = cuboidFromCorners(x1, y1, z1, x2, y2, z2);
-                                                                            createField(new FieldDefinition(fieldId, dimId, bounds, Map.of("source", "command")));
-                                                                            return reply(context.getSource(), "field=create:" + fieldId);
+                                                                            FieldDefinition field = new FieldDefinition(fieldToken, dimId, bounds, Map.of("source", "command"));
+                                                                            createField(field);
+                                                                            return reply(context.getSource(), "field=create:" + field.id());
                                                                         })))))))));
 
         root.then(Commands.literal("read")
                 .then(Commands.argument("id", StringArgumentType.word())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(fieldIdSuggestions(), builder))
                         .executes(context -> {
-                            Identifier fieldId = resolveFieldIdToken(StringArgumentType.getString(context, "id"));
+                            String fieldToken = StringArgumentType.getString(context, "id");
+                            UUID fieldId = resolveFieldIdToken(fieldToken);
                             FieldDefinition field = fieldId == null ? null : FieldManager.INSTANCE.get(fieldId);
                             if (field == null) {
                                 return reply(context.getSource(), "field=not_found");
@@ -316,7 +258,8 @@ public class AccessCommandService {
                 .then(Commands.argument("id", StringArgumentType.word())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(fieldIdSuggestions(), builder))
                         .executes(context -> {
-                            Identifier fieldId = resolveFieldIdToken(StringArgumentType.getString(context, "id"));
+                            String fieldToken = StringArgumentType.getString(context, "id");
+                            UUID fieldId = resolveFieldIdToken(fieldToken);
                             if (fieldId == null) {
                                 return reply(context.getSource(), "field=not_found");
                             }
@@ -325,7 +268,9 @@ public class AccessCommandService {
                                 return reply(context.getSource(), "field=not_found");
                             }
                             FieldManager.INSTANCE.unregister(fieldId);
-                            createField(new FieldDefinition(existing.id(), existing.dimensionId(), existing.bounds(), Map.of("updated", "true")));
+                            var newData = new java.util.HashMap<String, Object>(existing.fieldData());
+                            newData.put("updated", "true");
+                            createField(new FieldDefinition(existing.token(), existing.dimensionId(), existing.bounds(), newData));
                             return reply(context.getSource(), "field=updated:" + fieldId);
                         })));
 
@@ -333,7 +278,8 @@ public class AccessCommandService {
                 .then(Commands.argument("id", StringArgumentType.word())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(fieldIdSuggestions(), builder))
                         .executes(context -> {
-                            Identifier fieldId = resolveFieldIdToken(StringArgumentType.getString(context, "id"));
+                            String fieldToken = StringArgumentType.getString(context, "id");
+                            UUID fieldId = resolveFieldIdToken(fieldToken);
                             if (fieldId == null || FieldManager.INSTANCE.get(fieldId) == null) {
                                 return reply(context.getSource(), "field=not_found");
                             }
@@ -524,8 +470,8 @@ public class AccessCommandService {
                                                         .then(Commands.argument("y2", DoubleArgumentType.doubleArg())
                                                                 .then(Commands.argument("z2", DoubleArgumentType.doubleArg())
                                                                         .executes(context -> {
-                                                                            Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
-                                                                            id = toMyulibIdentifier(id.toString());
+                                                                            String hologramToken = StringArgumentType.getString(context, "id");
+                                                                            UUID id = toScopedMyulibUUID(HologramDefinition.ROUTE, hologramToken);
                                                                             Identifier dimId = context.getSource().getLevel().dimension().identifier();
                                                                             double x1 = DoubleArgumentType.getDouble(context, "x1");
                                                                             double y1 = DoubleArgumentType.getDouble(context, "y1");
@@ -533,8 +479,8 @@ public class AccessCommandService {
                                                                             double x2 = DoubleArgumentType.getDouble(context, "x2");
                                                                             double y2 = DoubleArgumentType.getDouble(context, "y2");
                                                                             double z2 = DoubleArgumentType.getDouble(context, "z2");
-                                                                            AABB bounds = HologramManager.INSTANCE.cuboidFromCorners(x1, y1, z1, x2, y2, z2);
-                                                                            HologramManager.INSTANCE.register(new HologramDefinition(id, dimId, bounds, id.toString()));
+                                                                            AABB bounds = HologramManager.cuboidFromCorners(x1, y1, z1, x2, y2, z2);
+                                                                            HologramManager.INSTANCE.register(new HologramDefinition(id, dimId, bounds, hologramToken));
                                                                             return reply(context.getSource(), "hologram=create:" + id);
                                                                         })))))))));
 
@@ -542,8 +488,9 @@ public class AccessCommandService {
                 .then(Commands.argument("id", StringArgumentType.word())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(projectionIdSuggestions(), builder))
                         .executes(context -> {
-                            Identifier id = resolveProjectionIdToken(StringArgumentType.getString(context, "id"));
-                            HologramDefinition projection = id == null ? null : HologramManager.INSTANCE.get(id);
+                            String idToken = StringArgumentType.getString(context, "id");
+                            UUID id = resolveProjectionIdToken(idToken);
+                            HologramDefinition projection = HologramManager.INSTANCE.get(id);
                             if (projection == null) {
                                 return reply(context.getSource(), "hologram=not_found");
                             }
@@ -554,8 +501,9 @@ public class AccessCommandService {
                 .then(Commands.argument("id", StringArgumentType.word())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(projectionIdSuggestions(), builder))
                         .executes(context -> {
-                            Identifier id = resolveProjectionIdToken(StringArgumentType.getString(context, "id"));
-                            if (id == null || HologramManager.INSTANCE.get(id) == null) {
+                            String idToken = StringArgumentType.getString(context, "id");
+                            UUID id = resolveProjectionIdToken(idToken);
+                            if (HologramManager.INSTANCE.get(id) == null) {
                                 return reply(context.getSource(), "hologram=not_found");
                             }
                             HologramManager.INSTANCE.unregister(id);
@@ -696,7 +644,8 @@ public class AccessCommandService {
                             var player = EntityArgument.getPlayer(context, "player");
                             var groups = RoleGroupManager.INSTANCE.getSortedGroupIdsOf(player.getUUID());
                             Identifier dimId = player.level().dimension().identifier();
-                            Identifier fieldId = FieldManager.INSTANCE.findAt(dimId, player.position()).map(FieldDefinition::id).orElse(null);
+                            FieldDefinition field = FieldManager.INSTANCE.findAt(dimId, player.position()).orElse(null);
+                            Identifier fieldId = field == null ? null : Identifier.fromNamespaceAndPath(Myulib.MOD_ID, FieldDefinition.ROUTE + "/" + field.id());
                             return reply(context.getSource(), renderFlattenedPlayerPermissions(player.getName().getString(), player.getUUID(), groups, fieldId, dimId));
                         })));
 
@@ -742,7 +691,8 @@ public class AccessCommandService {
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .then(Commands.argument("priority", IntegerArgumentType.integer())
                                         .executes(context -> {
-                                            Identifier id = toMyulibIdentifier(StringArgumentType.getString(context, "id"));
+                                            String groupToken = StringArgumentType.getString(context, "id");
+                                            UUID id = resolveRoleGroupIdToken(groupToken);
                                             int priority = IntegerArgumentType.getInteger(context, "priority");
                                             createRoleGroup(id, Component.literal(id.toString()), priority);
                                             return reply(context.getSource(), "rolegroup=create:" + id);
@@ -751,7 +701,7 @@ public class AccessCommandService {
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(rolegroupIdSuggestions(), builder))
                                 .executes(context -> {
-                                    Identifier id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
+                                    UUID id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
                                     RoleGroupDefinition group = RoleGroupManager.INSTANCE.get(id);
                                     if (group == null) {
                                         return reply(context.getSource(), "rolegroup=not_found");
@@ -763,19 +713,19 @@ public class AccessCommandService {
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(rolegroupIdSuggestions(), builder))
                                 .then(Commands.argument("priority", IntegerArgumentType.integer())
                                         .executes(context -> {
-                                            Identifier id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
+                                            UUID id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
                                             if (RoleGroupManager.INSTANCE.get(id) == null) {
                                                 return reply(context.getSource(), "rolegroup=not_found");
                                             }
                                             int priority = IntegerArgumentType.getInteger(context, "priority");
-                                            RoleGroupManager.INSTANCE.update(id, old -> new RoleGroupDefinition(old.id(), old.translationKey(), priority, old.metadata(), old.members()));
+                                            RoleGroupManager.INSTANCE.update(id, old -> new RoleGroupDefinition(old.uuid(), old.translationKey(), priority, old.metadata(), old.members()));
                                             return reply(context.getSource(), "rolegroup=updated:" + id);
                                         }))))
                 .then(Commands.literal("delete")
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(rolegroupIdSuggestions(), builder))
                                 .executes(context -> {
-                                    Identifier id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
+                                    UUID id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
                                     if (RoleGroupManager.INSTANCE.get(id) == null) {
                                         return reply(context.getSource(), "rolegroup=not_found");
                                     }
@@ -787,7 +737,7 @@ public class AccessCommandService {
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(rolegroupIdSuggestions(), builder))
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .executes(context -> {
-                                            Identifier id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
+                                            UUID id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
                                             if (RoleGroupManager.INSTANCE.get(id) == null) {
                                                 return reply(context.getSource(), "rolegroup=not_found");
                                             }
@@ -802,7 +752,7 @@ public class AccessCommandService {
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(rolegroupIdSuggestions(), builder))
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .executes(context -> {
-                                            Identifier id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
+                                            UUID id = resolveRoleGroupIdToken(StringArgumentType.getString(context, "id"));
                                             if (RoleGroupManager.INSTANCE.get(id) == null) {
                                                 return reply(context.getSource(), "rolegroup=not_found");
                                             }
@@ -830,18 +780,18 @@ public class AccessCommandService {
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .then(Commands.argument("color", StringArgumentType.word())
                                         .executes(context -> {
-                                            Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
-                                            id = toMyulibIdentifier(id.toString());
+                                            String teamToken = StringArgumentType.getString(context, "id");
+                                            Identifier id = toScopedMyulibIdentifier(TeamDefinition.ROUTE, teamToken);
                                             TeamColor color = parseTeamColor(StringArgumentType.getString(context, "color"));
-                                            TeamManager.INSTANCE.register(new TeamDefinition(id, Component.literal(id.toString()), color, Map.of()));
+                                            TeamManager.INSTANCE.register(new TeamDefinition(teamToken, Component.literal(id.toString()), color, Map.of()));
                                             return reply(context.getSource(), "team=create:" + id);
                                         }))))
                 .then(Commands.literal("read")
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(teamIdSuggestions(), builder))
                                 .executes(context -> {
-                                    Identifier id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
-                                    TeamDefinition team = id == null ? null : TeamManager.INSTANCE.get(id);
+                                    UUID id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
+                                    TeamDefinition team = TeamManager.INSTANCE.get(id);
                                     if (team == null) {
                                         return reply(context.getSource(), "team=not_found");
                                     }
@@ -852,20 +802,20 @@ public class AccessCommandService {
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(teamIdSuggestions(), builder))
                                 .then(Commands.argument("color", StringArgumentType.word())
                                         .executes(context -> {
-                                            Identifier id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
-                                            if (id == null || TeamManager.INSTANCE.get(id) == null) {
+                                            UUID id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
+                                            if (TeamManager.INSTANCE.get(id) == null) {
                                                 return reply(context.getSource(), "team=not_found");
                                             }
                                             TeamColor color = parseTeamColor(StringArgumentType.getString(context, "color"));
-                                            TeamManager.INSTANCE.update(id, old -> new TeamDefinition(old.id(), old.translationKey(), color, old.flags()));
+                                            TeamManager.INSTANCE.update(id, old -> new TeamDefinition(old.uuid().toString(), old.translationKey(), color, old.flags(), old.playerLimit()));
                                             return reply(context.getSource(), "team=updated:" + id);
-                                        }))))
+                                         }))))
                 .then(Commands.literal("delete")
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(teamIdSuggestions(), builder))
                                 .executes(context -> {
-                                    Identifier id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
-                                    if (id == null || TeamManager.INSTANCE.get(id) == null) {
+                                    UUID id = resolveTeamIdToken(StringArgumentType.getString(context, "id"));
+                                    if (TeamManager.INSTANCE.get(id) == null) {
                                         return reply(context.getSource(), "team=not_found");
                                     }
                                     TeamManager.INSTANCE.unregister(id);
@@ -875,272 +825,65 @@ public class AccessCommandService {
                         .executes(context -> reply(context.getSource(), "team=count:" + TeamManager.INSTANCE.all().size()))));
     }
 
-    private static void registerGameCrud(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal(COMMAND_PREFIX + "game")
-                .requires(source -> source.permissions().hasPermission(new Permission.HasCommandLevel(PermissionLevel.GAMEMASTERS)))
-                .then(Commands.literal("create")
-                        .then(Commands.literal("tictactoe")
-                                .then(Commands.argument("id", StringArgumentType.word())
-                                        .executes(context -> {
-                                            ServerPlayer player = context.getSource().getPlayer();
-                                            if (player == null) {
-                                                return reply(context.getSource(), "game=tictactoe_player_only");
-                                            }
-
-                                            String requestedName = normalizeGameInstanceName(StringArgumentType.getString(context, "id"));
-                                            if (GameManager.resolveInstanceId(requestedName).isPresent()) {
-                                                return reply(context.getSource(), "game=instance_name_exists:" + requestedName);
-                                            }
-
-                                            ensureTicTacToeBlueTeamExists();
-                                            Set<UUID> members = TeamManager.INSTANCE.members(TICTACTOE_BLUE_TEAM_ID);
-                                            UUID bluePlayerId;
-                                            if (members.isEmpty()) {
-                                                bluePlayerId = player.getUUID();
-                                                TeamManager.INSTANCE.addPlayer(TICTACTOE_BLUE_TEAM_ID, bluePlayerId);
-                                            } else if (members.size() == 1) {
-                                                bluePlayerId = members.iterator().next();
-                                            } else {
-                                                return reply(context.getSource(), "game=tictactoe_blue_must_have_exactly_one_player");
-                                            }
-
-                                            try {
-                                                TicTacToeGameDefinition.TicTacToeConfig config = TicTacToeGameDefinition.TicTacToeConfig.fromStart(player.position(), bluePlayerId);
-                                                GameInstance<?, ?, ?> instance = GameManager.createInstance(TicTacToeGameDefinition.GAME_ID, requestedName, context.getSource().getLevel());
-                                                GameManager.setInstanceConfig(requestedName, config);
-                                                return reply(context.getSource(), "game=tictactoe_created_waiting:" + requestedName + "->" + instance.getInstanceId());
-                                            } catch (Exception ex) {
-                                                return reply(context.getSource(), "game=tictactoe_create_failed:" + ex.getClass().getSimpleName());
-                                            }
-                                        }))))
-                .then(Commands.literal("join")
-                        .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                        .executes(context -> {
-                                            ServerPlayer target = EntityArgument.getPlayer(context, "player");
-                                            String token = StringArgumentType.getString(context, "gameInstanceId");
-                                            GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-                                            if (instance == null) {
-                                                return reply(context.getSource(), "game=not_found");
-                                            }
-
-                                            if (!GameManager.joinPlayer(instance.getInstanceId(), target.getUUID(), null)) {
-                                                return reply(context.getSource(), "game=join_failed");
-                                            }
-                                            Identifier assigned = instance.getPlayerTeam(target.getUUID()).orElse(GameConfig.SPECTATOR_TEAM_ID);
-                                            return reply(context.getSource(),
-                                                    "game=joined:" + target.getName().getString() + "->" + assigned.getPath() + "@" + instance.getInstanceId());
-                                        })
-                                        .then(Commands.argument("teamId", StringArgumentType.word())
-                                                .suggests((context, builder) -> {
-                                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                                    return SharedSuggestionProvider.suggest(gameTeamSuggestions(token), builder);
-                                                })
-                                                .executes(context -> {
-                                                    ServerPlayer target = EntityArgument.getPlayer(context, "player");
-                                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-                                                    if (instance == null) {
-                                                        return reply(context.getSource(), "game=not_found");
-                                                    }
-
-                                                    Identifier requestedTeam = resolveGameTeamId(instance, StringArgumentType.getString(context, "teamId"));
-                                                    if (requestedTeam == null) {
-                                                        return reply(context.getSource(), "game=team_not_found");
-                                                    }
-
-                                                    if (!GameManager.joinPlayer(instance.getInstanceId(), target.getUUID(), requestedTeam)) {
-                                                        return reply(context.getSource(), "game=join_failed");
-                                                    }
-                                                    Identifier assigned = instance.getPlayerTeam(target.getUUID()).orElse(GameConfig.SPECTATOR_TEAM_ID);
-                                                    return reply(context.getSource(),
-                                                            "game=joined:" + target.getName().getString() + "->" + assigned.getPath() + "@" + instance.getInstanceId());
-                                                })))))
-                .then(Commands.literal("host")
-                        .then(Commands.literal("get")
-                                .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                        .executes(context -> {
-                                            String token = StringArgumentType.getString(context, "gameInstanceId");
-                                            GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-                                            if (instance == null) {
-                                                return reply(context.getSource(), "game=not_found");
-                                            }
-                                            String host = instance.getHostUuid().map(UUID::toString).orElse("none");
-                                            return reply(context.getSource(), "game=host:" + instance.getInstanceId() + "=" + host);
-                                        })))
-                        .then(Commands.literal("set")
-                                .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                        .then(Commands.argument("playerId", StringArgumentType.word())
-                                                .executes(context -> {
-                                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-                                                    if (instance == null) {
-                                                        return reply(context.getSource(), "game=not_found");
-                                                    }
-
-                                                    UUID playerId;
-                                                    try {
-                                                        playerId = UUID.fromString(StringArgumentType.getString(context, "playerId"));
-                                                    } catch (IllegalArgumentException ex) {
-                                                        return reply(context.getSource(), "game=invalid_player_id");
-                                                    }
-
-                                                    instance.setHostUuid(playerId);
-                                                    return reply(context.getSource(), "game=host_set:" + instance.getInstanceId() + "=" + playerId);
-                                                })))))
-                .then(Commands.literal("init")
-                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                .executes(context -> {
-                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-                                    if (instance == null) {
-                                        return reply(context.getSource(), "game=not_found");
-                                    }
-                                    int instanceId = instance.getInstanceId();
-
-                                    try {
-                                        boolean initialized = GameManager.initInstance(instanceId);
-                                        return reply(context.getSource(), initialized
-                                                ? "game=initialized:" + instanceId
-                                                : "game=already_initialized_or_not_found");
-                                    } catch (IllegalArgumentException ex) {
-                                        return reply(context.getSource(), "game=init_invalid_config:" + ex.getMessage());
-                                    } catch (Exception ex) {
-                                        return reply(context.getSource(), "game=init_failed:" + ex.getClass().getSimpleName());
-                                    }
-                                })))
-                .then(Commands.literal("start")
-                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                .executes(context -> {
-                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-                                    if (instance == null) {
-                                        return reply(context.getSource(), "game=not_found");
-                                    }
-                                    int instanceId = instance.getInstanceId();
-
-                                    try {
-                                        boolean started = GameManager.startInstance(instanceId);
-                                        return reply(context.getSource(), started
-                                                ? "game=started:" + instanceId
-                                                : "game=already_started_or_not_found");
-                                    } catch (IllegalArgumentException ex) {
-                                        return reply(context.getSource(), "game=start_invalid_config:" + ex.getMessage());
-                                    } catch (Exception ex) {
-                                        return reply(context.getSource(), "game=start_failed:" + ex.getClass().getSimpleName());
-                                    }
-                                })))
-                .then(Commands.literal("end")
-                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                .executes(context -> {
-                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-                                    if (instance == null) {
-                                        return reply(context.getSource(), "game=not_found");
-                                    }
-                                    int instanceId = instance.getInstanceId();
-
-                                    try {
-                                        boolean ended = GameManager.shutdownInstance(instanceId);
-                                        return reply(context.getSource(), ended
-                                                ? "game=ended:" + instanceId
-                                                : "game=end_failed_or_not_found");
-                                    } catch (Exception ex) {
-                                        return reply(context.getSource(), "game=end_failed:" + ex.getClass().getSimpleName());
-                                    }
-                                })))
-                .then(Commands.literal("read")
-                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                .executes(context -> {
-                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                    GameInstance<?, ?, ?> instance = GameManager.getInstance(token);
-                                    if (instance == null) {
-                                        return reply(context.getSource(), "game=not_found");
-                                    }
-                                    int instanceId = instance.getInstanceId();
-                                    return reply(context.getSource(), "game=instance:" + instanceId + ",enabled:" + instance.isEnabled() + ",initialized:" + instance.isInitialized() + ",started:" + instance.isStarted());
-                                })))
-                .then(Commands.literal("update")
-                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                .executes(context -> {
-                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                    if (!GameManager.resetInstance(token)) {
-                                        return reply(context.getSource(), "game=not_found");
-                                    }
-                                    int instanceId = GameManager.resolveInstanceId(token).orElse(-1);
-                                    return reply(context.getSource(), "game=updated:" + instanceId);
-                                })))
-                .then(Commands.literal("delete")
-                        .then(Commands.argument("gameInstanceId", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                .executes(context -> {
-                                    String token = StringArgumentType.getString(context, "gameInstanceId");
-                                    int instanceId = GameManager.resolveInstanceId(token).orElse(-1);
-                                    boolean removed = GameManager.destroyInstance(token);
-                                    return reply(context.getSource(), removed ? "game=deleted:" + instanceId : "game=not_found");
-                                })))
-                .then(Commands.literal("list")
-                        .executes(context -> {
-                            long started = GameManager.getInstances().stream().filter(GameInstance::isStarted).count();
-                            return reply(context.getSource(), "game=instance_count:" + GameManager.getInstances().size() + ",started=" + started + ",named=" + GameManager.instanceTokens().size());
-                        })));
-    }
-
+    // registerGameCrud has been removed - needs reimplementation with new GameManager API
+    
     private static void registerTimerCrud(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal(COMMAND_PREFIX + "timer")
-                .requires(source -> source.permissions().hasPermission(new Permission.HasCommandLevel(PermissionLevel.GAMEMASTERS)))
-                .then(Commands.literal("create")
-                        .then(Commands.argument("id", StringArgumentType.word())
-                                .then(Commands.argument("ticks", LongArgumentType.longArg(1L))
-                                        .executes(context -> {
-                                            Identifier id = Identifier.parse(StringArgumentType.getString(context, "id"));
-                                            id = toMyulibIdentifier(id.toString());
-                                            long ticks = LongArgumentType.getLong(context, "ticks");
-                                            TimerManager.INSTANCE.register(new TimerDefinition(id, ticks));
-                                            TRACKED_TIMERS.add(id);
-                                            return reply(context.getSource(), "timer=create:" + id);
-                                        }))))
-                .then(Commands.literal("read")
-                        .then(Commands.argument("id", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
+        var root = Commands.literal(COMMAND_PREFIX + "timer")
+                .requires(source -> source.permissions().hasPermission(new Permission.HasCommandLevel(PermissionLevel.GAMEMASTERS)));
+
+        root.then(Commands.literal("create")
+                .then(Commands.argument("id", StringArgumentType.word())
+                        .then(Commands.argument("ticks", LongArgumentType.longArg(1L))
                                 .executes(context -> {
-                                    Identifier id = resolveTimerIdToken(StringArgumentType.getString(context, "id"));
-                                    return reply(context.getSource(), "timer=exists:" + TimerManager.INSTANCE.has(id));
-                                })))
-                .then(Commands.literal("update")
-                        .then(Commands.argument("id", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
-                                .then(Commands.argument("ticks", LongArgumentType.longArg(1L))
-                                        .executes(context -> {
-                                            Identifier id = resolveTimerIdToken(StringArgumentType.getString(context, "id"));
-                                            long ticks = LongArgumentType.getLong(context, "ticks");
-                                            if (!TimerManager.INSTANCE.has(id)) {
-                                                return reply(context.getSource(), "timer=not_found");
-                                            }
-                                            TimerManager.INSTANCE.unregister(id);
-                                            TimerManager.INSTANCE.register(new TimerDefinition(id, ticks));
-                                            TRACKED_TIMERS.add(id);
-                                            return reply(context.getSource(), "timer=updated:" + id);
-                                        }))))
-                .then(Commands.literal("delete")
-                        .then(Commands.argument("id", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
+                                    String idToken = StringArgumentType.getString(context, "id");
+                                    UUID id = resolveTimerIdToken(idToken);
+                                    long ticks = LongArgumentType.getLong(context, "ticks");
+                                    TimerManager.INSTANCE.register(new TimerDefinition(id, ticks));
+                                    TRACKED_TIMERS.add(id);
+                                    return reply(context.getSource(), "timer=create:" + id);
+                                }))));
+
+        root.then(Commands.literal("read")
+                .then(Commands.argument("id", StringArgumentType.word())
+                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
+                        .executes(context -> {
+                            String idToken = StringArgumentType.getString(context, "id");
+                            UUID id = resolveTimerIdToken(idToken);
+                            return reply(context.getSource(), "timer=exists:" + TimerManager.INSTANCE.has(id));
+                        })));
+
+        root.then(Commands.literal("update")
+                .then(Commands.argument("id", StringArgumentType.word())
+                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
+                        .then(Commands.argument("ticks", LongArgumentType.longArg(1L))
                                 .executes(context -> {
-                                    Identifier id = resolveTimerIdToken(StringArgumentType.getString(context, "id"));
-                                    boolean removed = TimerManager.INSTANCE.unregister(id) != null;
-                                    TRACKED_TIMERS.remove(id);
-                                    return reply(context.getSource(), removed ? "timer=deleted:" + id : "timer=not_found");
-                                })))
-                .then(Commands.literal("list")
-                        .executes(context -> reply(context.getSource(), "timer=definition_count:" + TimerManager.INSTANCE.timerDefinitionCount() + ",tracked:" + TRACKED_TIMERS.size()))));
+                                    String idToken = StringArgumentType.getString(context, "id");
+                                    UUID id = resolveTimerIdToken(idToken);
+                                    long ticks = LongArgumentType.getLong(context, "ticks");
+                                    if (!TimerManager.INSTANCE.has(id)) {
+                                        return reply(context.getSource(), "timer=not_found");
+                                    }
+                                    TimerManager.INSTANCE.unregister(id);
+                                    TimerManager.INSTANCE.register(new TimerDefinition(id, ticks));
+                                    TRACKED_TIMERS.add(id);
+                                    return reply(context.getSource(), "timer=updated:" + id);
+                                }))));
+
+        root.then(Commands.literal("delete")
+                .then(Commands.argument("id", StringArgumentType.word())
+                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(timerIdSuggestions(), builder))
+                        .executes(context -> {
+                            String idToken = StringArgumentType.getString(context, "id");
+                            UUID id = resolveTimerIdToken(idToken);
+                            boolean removed = TimerManager.INSTANCE.unregister(id) != null;
+                            TRACKED_TIMERS.remove(id);
+                            return reply(context.getSource(), removed ? "timer=deleted:" + id : "timer=not_found");
+                        })));
+
+        root.then(Commands.literal("list")
+                .executes(context -> reply(context.getSource(), "timer=definition_count:" + TimerManager.INSTANCE.timerDefinitionCount() + ",tracked:" + TRACKED_TIMERS.size())));
+
+        dispatcher.register(root);
     }
 
     private static PermissionAction parseAction(String raw) {
@@ -1170,42 +913,17 @@ public class AccessCommandService {
         };
     }
 
-    private static Identifier resolveFieldIdToken(String token) {
-        Identifier fromShort = FieldManager.INSTANCE.resolveShortId(token);
-        return fromShort != null ? fromShort : toMyulibIdentifier(token);
-    }
+    private static UUID resolveFieldIdToken(String token) { return resolveStableUuidToken(token); }
 
     private static void ensureTicTacToeBlueTeamExists() {
-        if (TeamManager.INSTANCE.get(TICTACTOE_BLUE_TEAM_ID) == null) {
-            TeamManager.INSTANCE.register(new TeamDefinition(
-                    TICTACTOE_BLUE_TEAM_ID,
-                    Component.literal("TicTacToe Blue"),
-                    TeamColor.BLUE,
-                    Map.of()
-            ));
-        }
+        // no-op: retained for compatibility with older command flows
     }
 
-    private static Identifier resolveRoleGroupIdToken(String token) {
-        Identifier fromShort = RoleGroupManager.INSTANCE.resolveShortId(token);
-        if (fromShort != null) {
-            return fromShort;
-        }
-        return toMyulibIdentifier(token);
-    }
+    private static UUID resolveRoleGroupIdToken(String token) { return resolveStableUuidToken(token); }
 
-    private static Identifier resolveTeamIdToken(String token) {
-        Identifier fromShort = TeamManager.INSTANCE.resolveShortId(token);
-        return fromShort != null ? fromShort : toMyulibIdentifier(token);
-    }
+    private static UUID resolveTeamIdToken(String token) { return resolveStableUuidToken(token); }
 
-    private static Identifier resolveTimerIdToken(String token) {
-        Identifier fromPath = TRACKED_TIMERS.stream()
-                .filter(id -> id.getPath().equals(token))
-                .findFirst()
-                .orElse(null);
-        return fromPath != null ? fromPath : toMyulibIdentifier(token);
-    }
+    private static UUID resolveTimerIdToken(String token) { return resolveStableUuidToken(token); }
 
     private static String normalizeGameInstanceName(String token) {
         return token == null ? "" : token.trim().toLowerCase();
@@ -1222,7 +940,7 @@ public class AccessCommandService {
         return "field=" + FieldManager.INSTANCE.all().size()
                 + ",rolegroup=" + RoleGroupManager.INSTANCE.groups().size()
                 + ",team=" + TeamManager.INSTANCE.all().size()
-                + ",game_instance=" + GameManager.getInstances().size()
+                + ",game_instance=" + GameManager.INSTANCE.getInstances().size()
                 + ",timer=" + TimerManager.INSTANCE.timerDefinitionCount() + ",timer_instance=" + TimerManager.INSTANCE.timerInstanceCount()
                 + ",control_bindings=" + ControlManager.INSTANCE.controlledCount();
     }
@@ -1235,14 +953,14 @@ public class AccessCommandService {
     }
 
     // --- Service Layer helpers ---
-    public static void createRoleGroup(Identifier groupId, MutableComponent displayName, int priority) {
-        Identifier normalized = toMyulibIdentifier(groupId == null ? "" : groupId.toString());
-        RoleGroupDefinition group = new RoleGroupDefinition(normalized, displayName, priority, Map.of(), Set.of());
+    public static void createRoleGroup(UUID groupId, MutableComponent displayName, int priority) {
+        UUID id = groupId == null ? resolveStableUuidToken(null) : groupId;
+        RoleGroupDefinition group = new RoleGroupDefinition(id, displayName, priority, Map.of(), Set.of());
         RoleGroupManager.INSTANCE.register(group);
         RoleGroupManager.INSTANCE.save();
     }
 
-    public static void deleteRoleGroup(Identifier groupId) {
+    public static void deleteRoleGroup(UUID groupId) {
         RoleGroupManager.INSTANCE.delete(groupId);
         RoleGroupManager.INSTANCE.save();
     }
@@ -1262,7 +980,7 @@ public class AccessCommandService {
         FieldManager.INSTANCE.save();
     }
 
-    public static void deleteField(Identifier fieldId) {
+    public static void deleteField(UUID fieldId) {
         FieldManager.INSTANCE.unregister(fieldId);
         FieldManager.INSTANCE.save();
     }
@@ -1327,7 +1045,7 @@ public class AccessCommandService {
         return switch (scope) {
             case FIELD -> {
                 Identifier fieldId = PermissionManager.INSTANCE.resolveFieldShortId(token);
-                yield fieldId != null ? fieldId : toMyulibIdentifier(token);
+                yield fieldId != null ? fieldId : toScopedMyulibIdentifier(FieldDefinition.ROUTE, token);
             }
             case DIMENSION -> {
                 Identifier dimId = PermissionManager.INSTANCE.resolveDimensionShortId(token);
@@ -1409,23 +1127,14 @@ public class AccessCommandService {
 
     private static List<String> projectionIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
-        for (Identifier id : HologramManager.INSTANCE.all().keySet()) {
-            suggestions.add(id.getPath());
+        for (HologramDefinition hologram : HologramManager.INSTANCE.all().values()) {
+            suggestions.add(hologram.token().toString());
         }
         return List.copyOf(suggestions);
     }
 
-    private static Identifier resolveProjectionIdToken(String token) {
-        if (token == null || token.isBlank()) {
-            return null;
-        }
-        if (!token.contains(":")) {
-            Identifier candidate = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, token);
-            if (HologramManager.INSTANCE.get(candidate) != null) {
-                return candidate;
-            }
-        }
-        return toMyulibIdentifier(token);
+    private static UUID resolveProjectionIdToken(String token) {
+        return resolveStableUuidToken(token);
     }
 
     private static String onOff(boolean value) {
@@ -1445,23 +1154,15 @@ public class AccessCommandService {
     private static List<String> rolegroupIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         for (RoleGroupDefinition group : RoleGroupManager.INSTANCE.groups()) {
-            suggestions.add(group.id().getPath());
-            String shortId = RoleGroupManager.INSTANCE.getShortIdOf(group.id());
-            if (shortId != null && !shortId.isBlank()) {
-                suggestions.add(shortId);
-            }
+            suggestions.add(group.token().toString());
         }
         return List.copyOf(suggestions);
     }
 
     private static List<String> fieldIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
-        for (Identifier id : FieldManager.INSTANCE.all().keySet()) {
-            suggestions.add(id.getPath());
-            String shortId = FieldManager.INSTANCE.getShortIdOf(id);
-            if (shortId != null && !shortId.isBlank()) {
-                suggestions.add(shortId);
-            }
+        for (FieldDefinition field : FieldManager.INSTANCE.all().values()) {
+            suggestions.add(field.token().toString());
         }
         return List.copyOf(suggestions);
     }
@@ -1475,8 +1176,8 @@ public class AccessCommandService {
         suggestions.add("everyone");
 
         for (RoleGroupDefinition group : RoleGroupManager.INSTANCE.groups()) {
-            suggestions.add(group.id().getPath());
-            suggestions.add(PermissionManager.INSTANCE.normalizeGroupName(group.id().getPath()));
+            suggestions.add(group.token().toString());
+            suggestions.add(PermissionManager.INSTANCE.normalizeGroupName(group.token().toString()));
         }
 
         for (String known : PermissionManager.INSTANCE.knownGroupNames()) {
@@ -1511,25 +1212,13 @@ public class AccessCommandService {
             }
             for (Identifier id : PermissionManager.INSTANCE.dimensionScopeIds()) {
                 suggestions.add(id.getPath());
-                String shortId = PermissionManager.INSTANCE.getDimensionShortIdOf(id);
-                if (shortId != null && !shortId.isBlank()) {
-                    suggestions.add(shortId);
-                }
             }
         } else if (scope == ScopeLayer.FIELD) {
-            for (Identifier id : FieldManager.INSTANCE.all().keySet()) {
-                suggestions.add(id.getPath());
-                String fieldShort = FieldManager.INSTANCE.getShortIdOf(id);
-                if (fieldShort != null && !fieldShort.isBlank()) {
-                    suggestions.add(fieldShort);
-                }
+            for (FieldDefinition field : FieldManager.INSTANCE.all().values()) {
+                suggestions.add(field.token().toString());
             }
             for (Identifier id : PermissionManager.INSTANCE.fieldScopeIds()) {
                 suggestions.add(id.getPath());
-                String shortId = PermissionManager.INSTANCE.getFieldShortIdOf(id);
-                if (shortId != null && !shortId.isBlank()) {
-                    suggestions.add(shortId);
-                }
             }
         } else if (scope == ScopeLayer.GLOBAL) {
             suggestions.add("global");
@@ -1540,8 +1229,8 @@ public class AccessCommandService {
 
     private static List<String> timerIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
-        for (Identifier id : TRACKED_TIMERS) {
-            suggestions.add(id.getPath());
+        for (UUID id : TRACKED_TIMERS) {
+            suggestions.add(id.toString());
         }
         return List.copyOf(suggestions);
     }
@@ -1549,57 +1238,21 @@ public class AccessCommandService {
     private static List<String> teamIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         for (TeamDefinition team : TeamManager.INSTANCE.all()) {
-            suggestions.add(team.id().getPath());
-            String shortId = TeamManager.INSTANCE.getShortIdOf(team.id());
-            if (shortId != null && !shortId.isBlank()) {
-                suggestions.add(shortId);
-            }
+            suggestions.add(team.token().toString());
         }
         return List.copyOf(suggestions);
     }
 
     private static List<String> gameTeamSuggestions(String instanceToken) {
-        GameInstance<?, ?, ?> instance = GameManager.getInstance(instanceToken);
-        if (instance == null) {
-            return List.of();
-        }
-
-        java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
-        for (Map.Entry<String, Identifier> entry : instance.getConfig().teams().entrySet()) {
-            suggestions.add(entry.getKey());
-            suggestions.add(entry.getValue().getPath());
-            suggestions.add(entry.getValue().toString());
-        }
-        return List.copyOf(suggestions);
+        return List.of();
     }
 
-    private static Identifier resolveGameTeamId(GameInstance<?, ?, ?> instance, String token) {
-        if (instance == null || token == null || token.isBlank()) {
-            return null;
-        }
-
-        String normalized = token.trim();
-        for (Map.Entry<String, Identifier> entry : instance.getConfig().teams().entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(normalized)) {
-                return entry.getValue();
-            }
-        }
-
-        for (Identifier teamId : instance.getConfig().teams().values()) {
-            if (teamId.getPath().equalsIgnoreCase(normalized) || teamId.toString().equalsIgnoreCase(normalized)) {
-                return teamId;
-            }
-        }
+    private static Identifier resolveGameTeamId(GameInstance<?, ?, ?> instance, Identifier id) {
         return null;
     }
 
     private static List<String> gameInstanceSuggestions() {
-        java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
-        suggestions.addAll(GameManager.instanceTokens());
-        for (GameInstance<?, ?, ?> instance : GameManager.getInstances()) {
-            suggestions.add(String.valueOf(instance.getInstanceId()));
-        }
-        return List.copyOf(suggestions);
+        return List.of();
     }
 
     private static String renderFlattenedPlayerPermissions(String playerName, java.util.UUID playerId, List<String> groups, Identifier fieldId, Identifier dimensionId) {
@@ -1615,6 +1268,57 @@ public class AccessCommandService {
             builder.append(action.name()).append("=").append(decision.name()).append("\n");
         }
         return builder.toString().trim();
+    }
+
+    private static UUID toScopedMyulibUUID(String route, String token) {
+        if (token == null || token.isBlank()) {
+            return UUID.nameUUIDFromBytes((route == null || route.isBlank() ? "everyone" : route + "/everyone").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        String value = token.trim();
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ignored) {
+            return UUID.nameUUIDFromBytes((route + ":" + value).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    private static UUID toMyulibUUID(String token) {
+        if (token == null || token.isBlank()) {
+            return UUID.nameUUIDFromBytes("everyone".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        String value = token.trim();
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ignored) {
+            return UUID.nameUUIDFromBytes(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    private static UUID resolveStableUuidToken(String token) {
+        if (token == null || token.isBlank()) {
+            return UUID.nameUUIDFromBytes("everyone".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        String value = token.trim();
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ignored) {
+            return UUID.nameUUIDFromBytes(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    private static Identifier toScopedMyulibIdentifier(String route, String token) {
+        if (token == null || token.isBlank()) {
+            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, route == null || route.isBlank() ? "everyone" : route + "/everyone");
+        }
+        String value = token.trim();
+        if (!value.contains(":")) {
+            if (value.startsWith(route + "/")) {
+                return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, value);
+            }
+            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, route + "/" + value);
+        }
+        Identifier parsed = Identifier.parse(value);
+        return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, parsed.getPath());
     }
 
     private static Identifier toMyulibIdentifier(String token) {

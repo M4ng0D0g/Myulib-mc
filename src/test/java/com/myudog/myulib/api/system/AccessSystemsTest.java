@@ -42,7 +42,7 @@ final class AccessSystemsTest {
         ));
         assertEquals(nether, FieldManager.INSTANCE.get(spawnId).dimensionId(), "Field dimension should update after re-registration");
         UUID playerId = UUID.fromString("00000000-0000-0000-0000-000000000123");
-        Identifier builderId = Identifier.fromNamespaceAndPath("myulib", "builder");
+        Identifier builderId = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "builder");
         RoleGroupManager.INSTANCE.register(new RoleGroupDefinition(
                 builderId,
                 Component.literal("Builder"),

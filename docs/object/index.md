@@ -1,5 +1,5 @@
 # Game object overview
-Game-object related types currently live under `com.myudog.myulib.api.game.object`.
+Game-object related types currently live under `com.myudog.myulib.api.object`.
 ## Current public types
 - `GameObjectConfig`
 - `GameObjectKind`

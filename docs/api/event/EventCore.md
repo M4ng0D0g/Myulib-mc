@@ -1,15 +1,15 @@
 # Event API
 Public event-layer Java types:
-- `com.myudog.myulib.api.event.Event`
-- `com.myudog.myulib.api.event.FailableEvent`
-- `com.myudog.myulib.api.event.EventPriority`
-- `com.myudog.myulib.api.event.ProcessResult`
-- `com.myudog.myulib.api.event.listener.EventListener`
-- `com.myudog.myulib.internal.event.EventDispatcherImpl`
-- `com.myudog.myulib.api.event.ServerEventBus`
-- `com.myudog.myulib.api.event.events.EntitySpawnEvent`
-- `com.myudog.myulib.api.event.events.ServerTickEvent`
-- `com.myudog.myulib.api.ecs.event.ComponentAddedEvent`
+- `com.myudog.myulib.api.core.event.IEvent`
+- `com.myudog.myulib.api.core.event.IFailableEvent`
+- `com.myudog.myulib.api.core.event.EventPriority`
+- `com.myudog.myulib.api.core.event.ProcessResult`
+- `com.myudog.myulib.api.core.event.IEventListener`
+- `com.myudog.myulib.api.core.event.EventBus`
+- `com.myudog.myulib.api.core.event.ServerEventBus`
+- `com.myudog.myulib.api.events.EntitySpawnEvent`
+- `com.myudog.myulib.api.events.ServerTickEvent`
+- `com.myudog.myulib.api.events.ComponentAddedEvent`
 ## Quick example
 ```java
 EventDispatcherImpl dispatcher = new EventDispatcherImpl();

@@ -6,7 +6,6 @@ import com.myudog.myulib.api.field.FieldManager;
 import com.myudog.myulib.api.field.FieldVisualizationManager;
 import com.myudog.myulib.api.hologram.network.HologramNetworking;
 import com.myudog.myulib.api.game.core.GameManager;
-import com.myudog.myulib.api.game.examples.TicTacToeGameDefinition;
 import com.myudog.myulib.api.rolegroup.RoleGroupManager;
 import com.myudog.myulib.api.camera.CameraApi;
 import com.myudog.myulib.api.permission.PermissionManager;
@@ -30,8 +29,8 @@ public final class MyulibApi {
 
 		FieldManager.INSTANCE.install();
 		FieldVisualizationManager.INSTANCE.install();
-		GameManager.install();
-		GameManager.register(new TicTacToeGameDefinition(TicTacToeGameDefinition.GAME_ID));
+		GameManager.INSTANCE.install();
+		// TicTacToeGameDefinition removed - register custom game definitions as needed
 		PermissionManager.INSTANCE.install();
 		RoleGroupManager.INSTANCE.install();
 		TeamManager.INSTANCE.install();

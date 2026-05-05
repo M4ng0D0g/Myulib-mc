@@ -1,7 +1,7 @@
 package com.myudog.myulib.api.effect;
 
 import com.myudog.myulib.api.effect.component.SpatialEffectComponent;
-import com.myudog.myulib.api.ecs.EcsContainer;
+import com.myudog.myulib.api.core.ecs.EcsContainer;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,7 +18,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * 空間滯留效果管理器。
  * 內部維護一個獨立的 EcsContainer，專門處理玩家與 AABB 重疊時的參照計數與狀態同步。
  */
-public class SpatialEffectManager implements ISpatialEffectManager {
+public final class SpatialEffectManager implements ISpatialEffectManager {
+
+    public static final SpatialEffectManager INSTANCE = new SpatialEffectManager();
+
+    private SpatialEffectManager() {}
 
     // 🌟 核心：內部獨立的 ECS 容器
     private final EcsContainer ecs = new EcsContainer();

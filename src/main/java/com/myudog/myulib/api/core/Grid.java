@@ -5,6 +5,7 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
+@Deprecated
 public class Grid<T> implements Iterable<T> {
 
     private final ArrayList<T> array;

@@ -14,6 +14,10 @@ public enum ControlType {
         return name().toLowerCase(Locale.ROOT);
     }
 
+    public String id() {
+        return token();
+    }
+
     public static ControlType parse(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("Control type cannot be blank");

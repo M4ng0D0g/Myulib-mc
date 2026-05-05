@@ -1,9 +1,9 @@
 package com.myudog.myulib.client.api.ui.component;
 
 import com.myudog.myulib.api.animation.AnimationTarget;
-import com.myudog.myulib.api.ecs.Component;
+import com.myudog.myulib.api.core.ecs.IComponent;
 
-public class TransformComponent implements Component {
+public class TransformComponent implements IComponent {
     public float x;
     public float y;
     public float width;

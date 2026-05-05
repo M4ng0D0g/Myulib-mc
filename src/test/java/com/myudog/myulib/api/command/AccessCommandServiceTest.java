@@ -1,20 +1,14 @@
 package com.myudog.myulib.api.command;
 import com.myudog.myulib.api.field.FieldDefinition;
 import com.myudog.myulib.api.field.FieldManager;
-import com.myudog.myulib.api.game.core.GameConfig;
-import com.myudog.myulib.api.game.core.GameData;
-import com.myudog.myulib.api.game.core.GameDefinition;
-import com.myudog.myulib.api.game.core.GameInstance;
-import com.myudog.myulib.api.game.core.GameManager;
-import com.myudog.myulib.api.game.state.BasicGameStateMachine;
-import com.myudog.myulib.api.game.state.GameState;
-import com.myudog.myulib.api.game.state.GameStateMachine;
+import com.myudog.myulib.api.game.core.*;
 import com.myudog.myulib.api.permission.PermissionAction;
 import com.myudog.myulib.api.permission.PermissionDecision;
 import com.myudog.myulib.api.permission.PermissionManager;
 import com.myudog.myulib.api.rolegroup.RoleGroupManager;
-import com.myudog.myulib.internal.event.EventDispatcherImpl;
+import com.myudog.myulib.api.core.event.EventBus;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -31,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 final class AccessCommandServiceTest {
-    private enum TestState implements GameState {
+    private enum TestState implements com.myudog.myulib.api.core.state.IState {
         WAITING
     }
 
@@ -54,16 +48,16 @@ final class AccessCommandServiceTest {
         }
 
         @Override
-        protected EventDispatcherImpl createEventBus() {
-            return new EventDispatcherImpl();
+        protected EventBus createEventBus() {
+            return new EventBus();
         }
 
         @Override
-        protected void bindBehavior(GameInstance<GameConfig, TestData, TestState> instance) {
+        protected void bindBehavior(@NonNull GameInstance<GameConfig, TestData, TestState> instance) {
         }
 
         @Override
-        protected void unbindBehavior(GameInstance<GameConfig, TestData, TestState> instance) {
+        protected void unbindBehavior(@NonNull GameInstance<GameConfig, TestData, TestState> instance) {
         }
     }
 
@@ -80,7 +74,7 @@ final class AccessCommandServiceTest {
                     null,
                     GameConfig.empty(),
                     new BasicGameStateMachine<>(TestState.WAITING, Map.of()),
-                    new EventDispatcherImpl()
+                    new EventBus()
             );
         }
 
@@ -172,7 +166,7 @@ final class AccessCommandServiceTest {
                 "registerDefaults should only attach the command callback");
         assertTrue(CommandRegistry.snapshot().containsKey("myulib:save"),
                 "registerDefaults should register the /myulib: local command mirror");
-        Identifier builderId = Identifier.fromNamespaceAndPath("myulib", "builders");
+        Identifier builderId = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "builders");
         AccessCommandService.createRoleGroup(builderId, Component.literal("Builders"), 7);
         assertEquals("Builders", RoleGroupManager.INSTANCE.get(builderId).translationKey().getString(),
                 "createRoleGroup should register the new group");
@@ -208,7 +202,7 @@ final class AccessCommandServiceTest {
         CommandRegistry.clear();
         AccessCommandService.registerDefaults();
 
-        String token = "command_end_room";
+        Identifier id = "command_end_room";
         int instanceId = 42_001;
         StubGameInstance instance = StubGameInstance.allocate(instanceId);
         Map<Integer, GameInstance<?, ?, ?>> instances = instanceMap();

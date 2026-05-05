@@ -1,0 +1,109 @@
+graph TB
+    subgraph IObjectDef["IObjectDef Interface"]
+        IObjectDef_def["+ token(): String<br/>+ getKind(): ObjectKind<br/>+ toIdentifier(): Identifier<br/>+ validate(): boolean<br/>+ createRuntimeInstance()"]
+    end
+
+    subgraph BaseObjDef["BaseObjDef Abstract"]
+        BaseObjDef_def["- token: String<br/>- kind: ObjectKind<br/>- registry: Map<br/>- values: Map<br/>+ get/set Property<br/>+ getProperties()<br/>+ getKind()"]
+    end
+
+    subgraph BlockObjDef["BlockObjDef Abstract"]
+        BlockObjDef_def["+ BLOCK_STATE: Property<br/>+ BOUNDING_BOX: Property<br/>+ registerProperties()"]
+    end
+
+    subgraph EntityObjDef["EntityObjDef Abstract"]
+        EntityObjDef_def["+ entityType: EntityType<br/>+ getEntityType()"]
+    end
+
+    subgraph ConcreteDefinitions["Concrete Definitions"]
+        MineableObjDef["MineableObjDef<br/>+ REWARD_EXP"]
+        InteractableObjDef["InteractableObjDef<br/>+ COOLDOWN_MS"]
+        AttackableObjDef["AttackableObjDef"]
+        DecorativeObjDef["DecorativeObjDef<br/>+ NBT_DATA"]
+        ProximityTriggerObjDef["ProximityTriggerObjDef<br/>+ RADIUS, SHAPE, TARGET"]
+        RespawnPointObjDef["RespawnPointObjDef<br/>+ TEAM_ID"]
+    end
+
+    subgraph IObjectRt["IObjectRt Interface"]
+        IObjectRt_def["+ getToken(): String<br/>+ getKind(): ObjectKind<br/>+ getProperties(): Collection<br/>+ getPosition(): Vec3<br/>+ setPosition(Vec3)<br/>+ spawn/destroy<br/>+ copy()"]
+    end
+
+    subgraph BaseObjRt["BaseObjRt Abstract"]
+        BaseObjRt_def["- definition: D<br/>- state: ObjectState<br/>+ get/set Property<br/>+ onSpawn/onDestroy<br/>+ spawn/destroy"]
+    end
+
+    subgraph BlockObjRt["BlockObjRt Abstract"]
+        BlockObjRt_def["- behaviors: List<br/>- originalState: BlockState<br/>+ addBehavior/removeBehavior<br/>+ onInitialize"]
+    end
+
+    subgraph EntityObjRt["EntityObjRt Abstract"]
+        EntityObjRt_def["- entity: E<br/>- behaviors: List<br/>+ addBehavior/removeBehavior<br/>+ summon<br/>+ getEntity()"]
+    end
+
+    subgraph ConcreteRuntime["Concrete Runtimes"]
+        MineableObjRt["MineableObjRt<br/>+ MineableBeh"]
+        InteractableObjRt["InteractableObjRt<br/>+ InteractableBeh"]
+        AttackableObjRt["AttackableObjRt<br/>+ AttackableBeh"]
+        DecorativeObjRt["DecorativeObjRt"]
+        ProximityTriggerObjRt["ProximityTriggerObjRt"]
+        RespawnPointObjRt["RespawnPointObjRt"]
+    end
+
+    subgraph Behavior["Behavior System"]
+        IObjectBeh["IObjectBeh<br/>+ onInitialize<br/>+ onDestroy"]
+        IBlockBeh["IBlockBeh<br/>extends IObjectBeh"]
+        IEntityBeh["IEntityBeh<br/>extends IObjectBeh"]
+        InteractableBeh["InteractableBeh"]
+        MineableBeh["MineableBeh"]
+        AttackableBeh["AttackableBeh"]
+    end
+
+    subgraph Events["Event System"]
+        BlockBreakEvent["BlockBreakEvent"]
+        BlockInteractEvent["BlockInteractEvent"]
+        EntityDamageEvent["EntityDamageEvent"]
+        EntityDeathEvent["EntityDeathEvent"]
+        EntityInteractEvent["EntityInteractEvent"]
+        ObjectMineEvent["ObjectMineEvent"]
+        ObjectInteractEvent["ObjectInteractEvent"]
+        ObjectDamageEvent["ObjectDamageEvent"]
+        ObjectDeathEvent["ObjectDeathEvent"]
+        StateChangeEvent["StateChangeEvent"]
+    end
+
+    %% Definition hierarchy
+    IObjectDef --> BaseObjDef
+    BaseObjDef --> BlockObjDef
+    BaseObjDef --> EntityObjDef
+    BlockObjDef --> MineableObjDef
+    BlockObjDef --> InteractableObjDef
+    EntityObjDef --> AttackableObjDef
+    EntityObjDef --> DecorativeObjDef
+    BaseObjDef --> ProximityTriggerObjDef
+    BaseObjDef --> RespawnPointObjDef
+
+    %% Runtime hierarchy
+    IObjectRt --> BaseObjRt
+    BaseObjRt --> BlockObjRt
+    BaseObjRt --> EntityObjRt
+    BlockObjRt --> MineableObjRt
+    BlockObjRt --> InteractableObjRt
+    EntityObjRt --> AttackableObjRt
+    EntityObjRt --> DecorativeObjRt
+    BaseObjRt --> ProximityTriggerObjRt
+    BaseObjRt --> RespawnPointObjRt
+
+    %% Behavior
+    IObjectBeh --> IBlockBeh
+    IObjectBeh --> IEntityBeh
+    IBlockBeh --> InteractableBeh
+    IBlockBeh --> MineableBeh
+    IEntityBeh --> AttackableBeh
+
+    style IObjectDef fill:#e1f5ff
+    style IObjectRt fill:#e1f5ff
+    style BaseObjDef fill:#fff3e0
+    style BaseObjRt fill:#fff3e0
+    style Behavior fill:#f3e5f5
+    style Events fill:#e8f5e9
+

@@ -1,0 +1,79 @@
+graph TB
+    subgraph ObjectDefCore["Object Definition Core"]
+        IObjectDef["IObjectDef Interface<br/>+ token(): String<br/>+ getKind(): ObjectKind<br/>+ toIdentifier(): Identifier<br/>+ validate(): boolean"]
+
+        BaseObjDef["BaseObjDef Abstract<br/>- token: String<br/>- kind: ObjectKind<br/>- registry: Map<br/>- values: Map<br/>+ define()<br/>+ registerProperties()"]
+    end
+
+    subgraph PropertySystem["Property System"]
+        Property["Property<br/>- name: String<br/>- type: Class<br/>- parser: Function"]
+
+        POS["POS: Property Vec3<br/>+ Default: Vec3.ZERO<br/>+ Format: x,y,z"]
+
+        PropertyRegistry["Property Registry<br/>- registry: Map"]
+
+        PropertyValue["Property Value Storage<br/>- values: Map"]
+    end
+
+    subgraph BlockDefinitions["Block Definitions"]
+        BlockObjDef["BlockObjDef Abstract<br/>+ BLOCK_STATE<br/>+ BOUNDING_BOX"]
+
+        MineableObjDef["MineableObjDef<br/>+ REWARD_EXP"]
+
+        InteractableObjDef["InteractableObjDef<br/>+ COOLDOWN_MS"]
+    end
+
+    subgraph EntityDefinitions["Entity Definitions"]
+        EntityObjDef["EntityObjDef Abstract<br/>- entityType: EntityType<br/>+ getEntityType()"]
+
+        AttackableObjDef["AttackableObjDef"]
+
+        DecorativeObjDef["DecorativeObjDef<br/>+ NBT_DATA"]
+    end
+
+    subgraph LogicDefinitions["Logic Definitions"]
+        ProximityTriggerObjDef["ProximityTriggerObjDef<br/>+ RADIUS<br/>+ SHAPE<br/>+ TARGET"]
+
+        RespawnPointObjDef["RespawnPointObjDef<br/>+ TEAM_ID"]
+    end
+
+    subgraph ObjectKindEnum["ObjectKind Enum"]
+        ObjectKindDef["ObjectKind<br/>+ ATTACKABLE<br/>+ MINEABLE<br/>+ DECORATIVE<br/>+ INTERACTABLE"]
+    end
+
+    %% Core relationships
+    IObjectDef -->|implemented by| BaseObjDef
+    BaseObjDef -->|uses| Property
+    BaseObjDef -->|manages| PropertyRegistry
+    BaseObjDef -->|manages| PropertyValue
+
+    %% Property relationships
+    Property -->|specific| POS
+    POS -->|registered in| PropertyRegistry
+    PropertyRegistry -->|maps to| PropertyValue
+
+    %% Block definitions
+    BaseObjDef -->|extended by| BlockObjDef
+    BlockObjDef -->|uses| POS
+    BlockObjDef -->|extended by| MineableObjDef
+    BlockObjDef -->|extended by| InteractableObjDef
+
+    %% Entity definitions
+    BaseObjDef -->|extended by| EntityObjDef
+    EntityObjDef -->|extended by| AttackableObjDef
+    EntityObjDef -->|extended by| DecorativeObjDef
+
+    %% Logic definitions
+    BaseObjDef -->|extended by| ProximityTriggerObjDef
+    BaseObjDef -->|extended by| RespawnPointObjDef
+
+    %% ObjectKind
+    BaseObjDef -->|uses| ObjectKindDef
+
+    style ObjectDefCore fill:#e3f2fd
+    style PropertySystem fill:#e8f5e9
+    style BlockDefinitions fill:#fff3e0
+    style EntityDefinitions fill:#f3e5f5
+    style LogicDefinitions fill:#fce4ec
+    style ObjectKindEnum fill:#e0f2f1
+

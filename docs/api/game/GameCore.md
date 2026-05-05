@@ -42,5 +42,5 @@ The current game API centers on `GameManager`, `GameDefinition`, `GameInstance`,
 
 ## Notes
 - `GameConfig.empty()` is the safest default configuration helper.
-- Game-object configuration lives under `com.myudog.myulib.api.game.object`.
+- Game-object configuration lives under `com.myudog.myulib.api.object`.
 

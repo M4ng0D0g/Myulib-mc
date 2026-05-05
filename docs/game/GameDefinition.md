@@ -1,35 +1,106 @@
 # GameDefinition
 
-`GameDefinition<C, D, S>` is the extension point where subclasses define how a game is assembled.
+`GameDefinition<C, D, S>` is the assembly and lifecycle extension point for each game mode.
 
-## Methods you implement
+## Methods you must implement
 
 - `createInitialData(C config)`
-  - Called during `GameInstance.init()`.
-  - Return your data subclass.
+  - Called by `GameInstance.init()`.
+  - Return your `GameData` subclass for this room.
 - `createStateMachine(C config)`
   - Define legal state transitions.
 - `createEventBus()`
-  - Return room-local event bus implementation.
+  - Return the room-local event bus implementation.
 
-## Optional hooks
+## Lifecycle hooks (new design)
 
-- `gameBehaviors()`
-  - Return `GameBehavior` list; each behavior is auto-bound at init and auto-unbound at clean.
-- `resolveTeamForJoin(...)`
-  - Customize join-time team assignment.
+- `init(instance)`
+  - public lifecycle interface (called by runtime)
+  - Called during instance init after data/runtime objects are ready.
+  - Built-in flow calls `bindBehavior(instance)`.
+- `clean(instance)`
+  - public lifecycle interface (called by runtime)
+  - Called during instance clean/shutdown/destroy.
+  - Built-in flow calls `unbindBehavior(instance)`.
+- `bindBehavior(instance)`
+  - required subclass implementation
+  - Bind game event listeners / timers / logic wiring for the current round.
+- `unbindBehavior(instance)`
+  - required subclass implementation
+  - Unsubscribe listeners and release round-scoped bindings.
+
+## Start and shutdown hooks
+
 - `onStart(instance)`
-  - Called when start is triggered after successful init.
-- `onEnd(instance)`
-  - Called when end is triggered before clean.
+  - Optional start callback.
+  - You can also trigger start by events registered in `bindBehavior(...)`.
+- `onShutDown(instance)`
+  - Forced stop callback (shutdown semantics).
+  - Called by `GameInstance.shutdown()` before clean.
+  - You can bypass transition checks by using `instance.forceTransition(...)` or `instance.resetState()`.
 
-## Deprecated bridge
+## Full example
 
-- `bindBehaviors(instance)` is compatibility-only.
-- Prefer `gameBehaviors()` for new code.
+```java
+public final class ChessDefinition extends GameDefinition<ChessConfig, ChessData, ChessState> {
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "chess/core");
+    private EventListener<GameObjectInteractEvent> startListener;
 
-## Event bus binding guidance
+    public ChessDefinition() {
+        super(ID);
+    }
 
-Define listeners in behaviors (`onBind`) or in `onStart`.
-Do not manually clear listeners in `onEnd`; instance clean phase clears the event bus.
+    @Override
+    public ChessData createInitialData(ChessConfig config) {
+        return new ChessData();
+    }
 
+    @Override
+    public GameStateMachine<ChessState> createStateMachine(ChessConfig config) {
+        return new BasicGameStateMachine<>(
+                ChessState.WAITING,
+                Map.of(
+                        ChessState.WAITING, Set.of(ChessState.RUNNING),
+                        ChessState.RUNNING, Set.of(ChessState.FINISHED)
+                )
+        );
+    }
+
+    @Override
+    protected EventDispatcherImpl createEventBus() {
+        return new EventDispatcherImpl();
+    }
+
+    @Override
+    protected void bindBehavior(GameInstance<ChessConfig, ChessData, ChessState> instance) {
+        // Example: bind one eventBus listener and drive state machine.
+        startListener = event -> {
+            if (instance.getCurrentState() == ChessState.WAITING) {
+                instance.transition(ChessState.RUNNING);
+                return ProcessResult.CONSUME;
+            }
+            return ProcessResult.PASS;
+        };
+        instance.getEventBus().subscribe(GameObjectInteractEvent.class, startListener);
+    }
+
+    @Override
+    protected void unbindBehavior(GameInstance<ChessConfig, ChessData, ChessState> instance) {
+        if (startListener != null) {
+            instance.getEventBus().unsubscribe(GameObjectInteractEvent.class, startListener);
+            startListener = null;
+        }
+    }
+
+    @Override
+    protected void onShutDown(GameInstance<ChessConfig, ChessData, ChessState> instance) {
+        // Skip transition guard and force state update for emergency shutdown.
+        instance.forceTransition(ChessState.FINISHED);
+    }
+}
+```
+
+## Migration note
+
+- Removed: `gameBehaviors()` and `GameBehavior` interface.
+- Replaced by: `init/clean` + `bindBehavior/unbindBehavior` in `GameDefinition`.

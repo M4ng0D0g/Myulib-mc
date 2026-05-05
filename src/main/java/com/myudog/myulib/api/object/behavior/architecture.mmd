@@ -1,0 +1,61 @@
+graph TB
+    subgraph BehaviorCore["Behavior Core System"]
+        IObjectBeh["IObjectBeh Interface<br/>+ onInitialize(T, GameInstance)<br/>+ onDestroy(T, GameInstance)"]
+
+        IBlockBeh["IBlockBeh<br/>extends IObjectBeh"]
+
+        IEntityBeh["IEntityBeh<br/>extends IObjectBeh"]
+    end
+
+    subgraph BlockBehaviors["Block Behaviors"]
+        InteractableBeh["InteractableBeh<br/>implements IBlockBeh<br/>- EventListener"]
+
+        MineableBeh["MineableBeh<br/>implements IBlockBeh<br/>- EventListener"]
+    end
+
+    subgraph EntityBehaviors["Entity Behaviors"]
+        AttackableBeh["AttackableBeh<br/>implements IEntityBeh<br/>- damageListener<br/>- deathListener"]
+    end
+
+    subgraph BehaviorLifecycle["Behavior Lifecycle"]
+        BehaviorAddition["Behavior Addition<br/>+ addBehavior(IBehavior)<br/>+ stored in runtime list"]
+
+        OnInitialize["onInitialize<br/>+ register event listeners<br/>+ setup runtime state"]
+
+        OnDestroy["onDestroy<br/>+ unregister listeners<br/>+ cleanup resources"]
+    end
+
+    subgraph RuntimeBehaviorBinding["Runtime Behavior Binding"]
+        BlockObjRtBinding["BlockObjRt<br/>- behaviors: List"]
+
+        EntityObjRtBinding["EntityObjRt<br/>- behaviors: List"]
+
+        InteractableRtBinding["InteractableObjRt<br/>+ addBehavior(new InteractableBeh())"]
+
+        MineableRtBinding["MineableObjRt<br/>+ behavior: MineableBeh"]
+
+        AttackableRtBinding["AttackableObjRt<br/>+ addBehavior(new AttackableBeh())"]
+    end
+
+    %% Core relationships
+    IObjectBeh -->|extends to| IBlockBeh
+    IObjectBeh -->|extends to| IEntityBeh
+    IBlockBeh -->|implemented by| InteractableBeh
+    IBlockBeh -->|implemented by| MineableBeh
+    IEntityBeh -->|implemented by| AttackableBeh
+
+    %% Lifecycle
+    BehaviorAddition -->|calls| OnInitialize
+    OnInitialize -->|leads to| OnDestroy
+
+    %% Runtime binding
+    BlockObjRtBinding -->|contains| InteractableBeh
+    BlockObjRtBinding -->|contains| MineableBeh
+    EntityObjRtBinding -->|contains| AttackableBeh
+
+    style BehaviorCore fill:#e3f2fd
+    style BlockBehaviors fill:#fff3e0
+    style EntityBehaviors fill:#f3e5f5
+    style BehaviorLifecycle fill:#e8f5e9
+    style RuntimeBehaviorBinding fill:#ede7f6
+

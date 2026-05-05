@@ -11,7 +11,11 @@ public enum HologramFeature {
     CORNERS;   // 結構方塊風格的 L 型角落
 
     public String token() {
-        return name().toLowerCase(Locale.ROOT);
+        return name().toLowerCase(Locale.ROOT).replace('_', '-');
+    }
+
+    public String id() {
+        return token();
     }
 
     public static HologramFeature parse(String raw) {

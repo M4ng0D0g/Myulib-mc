@@ -21,7 +21,7 @@ final class PermissionAndRoleGroupTest {
     @Test
     void roleGroupDefinitionsNormalizeAndMembersAreResolved() {
         UUID playerId = UUID.fromString("00000000-0000-0000-0000-000000000777");
-        Identifier builderId = Identifier.fromNamespaceAndPath("myulib", "builders");
+        Identifier builderId = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "builders");
         RoleGroupDefinition builder = new RoleGroupDefinition(
                 builderId,
                 Component.literal("Builders"),

@@ -1,5 +1,7 @@
 package com.myudog.myulib.api.debug;
 
+import java.util.Locale;
+
 public enum DebugFeature {
     PERMISSION,
     FIELD,
@@ -16,7 +18,11 @@ public enum DebugFeature {
     }
 
     public String token() {
-        return name().toLowerCase().replace('_', '-');
+        return name().toLowerCase(Locale.ROOT).replace('_', '-');
+    }
+
+    public String id() {
+        return token();
     }
 }
 

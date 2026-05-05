@@ -21,7 +21,7 @@ public class MixinServerPlayerGameMode {
     @Inject(method = "destroyBlock", at = @At("HEAD"), cancellable = true)
     private void onDestroyBlock(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
         // 將原生事件拋給全域管理器
-        boolean canceled = GameManager.handleBlockBreak(this.player, pos, (ServerLevel) this.player.level());
+        boolean canceled = GameManager.INSTANCE.handleBlockBreak(this.player, pos, (ServerLevel) this.player.level());
         if (canceled) {
             cir.setReturnValue(false);
         }

@@ -41,15 +41,15 @@ public final class TeamAdminService {
         return TeamManager.INSTANCE.removePlayer(playerId);
     }
 
-    public static Identifier teamOf(UUID playerId) {
+    public static UUID teamOf(UUID playerId) {
         return TeamManager.INSTANCE.teamOf(playerId);
     }
 
-    public static Set<UUID> members(Identifier teamId) {
+    public static Set<UUID> members(UUID teamId) {
         return TeamManager.INSTANCE.members(teamId);
     }
 
-    public static void forEachMember(Identifier teamId, java.util.function.Consumer<UUID> action) {
+    public static void forEachMember(UUID teamId, java.util.function.Consumer<UUID> action) {
         TeamManager.INSTANCE.forEachMember(teamId, action);
     }
 
@@ -61,17 +61,13 @@ public final class TeamAdminService {
         return TeamManager.INSTANCE.all(gameId);
     }
 
-    public static Map<Identifier, TeamDefinition> snapshot() {
+    public static Map<UUID, TeamDefinition> snapshot() {
         return TeamManager.INSTANCE.snapshot();
     }
 
-    public static Map<Identifier, TeamDefinition> snapshot(Identifier gameId) {
-        return TeamManager.INSTANCE.snapshot(gameId);
-    }
-
-    public static void openEditor(Identifier teamId, ConfigurationUiBridge ui) {
+    public static void openEditor(UUID teamId, ConfigurationUiBridge ui) {
         if (ui != null) {
-            ui.openTeamEditor(teamId);
+            ui.openTeamEditor(Identifier.fromNamespaceAndPath("myulib", "team/" + teamId));
         }
     }
 }

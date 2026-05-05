@@ -1,4 +1,5 @@
 {
   "myulib.test.team.blue": "Blue Team",
-  "myulib.rolegroup.everyone": "@everyone"
+  "myulib.rolegroup.everyone": "@everyone",
+  "team_spectator": "Spectators"
 }

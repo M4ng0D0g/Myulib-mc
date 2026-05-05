@@ -1,0 +1,63 @@
+graph TB
+    subgraph ObjectRtCore["Object Runtime Core"]
+        IObjectRt["IObjectRt Interface<br/>+ getToken(): String<br/>+ getKind(): ObjectKind<br/>+ getProperties(): Collection<br/>+ getPosition(): Vec3<br/>+ setPosition(Vec3)<br/>+ spawn()<br/>+ destroy()"]
+
+        BaseObjRt["BaseObjRt Abstract<br/>- definition: D<br/>- state: ObjectState<br/>+ spawn()<br/>+ destroy()<br/>+ onSpawn()<br/>+ onDestroy()"]
+    end
+
+    subgraph RuntimeState["Runtime State Management"]
+        ObjectState["ObjectState Enum<br/>NOT_LOADED<br/>SPAWNED<br/>DESTROYED"]
+
+        StateTransition["State Transition<br/>NOT_LOADED -> SPAWNED<br/>SPAWNED -> DESTROYED"]
+
+        LifecycleHooks["Lifecycle Hooks<br/>+ onSpawn(GameInstance)<br/>+ onDestroy(GameInstance)<br/>+ onInitialize(GameInstance)"]
+    end
+
+    subgraph BlockRuntimes["Block Runtimes"]
+        BlockObjRt["BlockObjRt Abstract<br/>- behaviors: List<br/>- originalState: BlockState<br/>+ addBehavior()"]
+
+        MineableObjRt["MineableObjRt"]
+
+        InteractableObjRt["InteractableObjRt"]
+    end
+
+    subgraph EntityRuntimes["Entity Runtimes"]
+        EntityObjRt["EntityObjRt Abstract<br/>- entity: E<br/>- behaviors: List<br/>+ addBehavior()"]
+
+        AttackableObjRt["AttackableObjRt"]
+
+        DecorativeObjRt["DecorativeObjRt"]
+    end
+
+    subgraph LogicRuntimes["Logic Runtimes"]
+        ProximityTriggerObjRt["ProximityTriggerObjRt<br/>- playersInZone: Set<br/>- trackedEntity: Entity"]
+
+        RespawnPointObjRt["RespawnPointObjRt<br/>+ no-op spawn/destroy"]
+    end
+
+    %% Core relationships
+    IObjectRt -->|implemented by| BaseObjRt
+    BaseObjRt -->|manages| ObjectState
+    BaseObjRt -->|follows| StateTransition
+    BaseObjRt -->|defines| LifecycleHooks
+
+    %% Block hierarchy
+    BaseObjRt -->|extended by| BlockObjRt
+    BlockObjRt -->|extended by| MineableObjRt
+    BlockObjRt -->|extended by| InteractableObjRt
+
+    %% Entity hierarchy
+    BaseObjRt -->|extended by| EntityObjRt
+    EntityObjRt -->|extended by| AttackableObjRt
+    EntityObjRt -->|extended by| DecorativeObjRt
+
+    %% Logic hierarchy
+    BaseObjRt -->|extended by| ProximityTriggerObjRt
+    BaseObjRt -->|extended by| RespawnPointObjRt
+
+    style ObjectRtCore fill:#e3f2fd
+    style RuntimeState fill:#e8f5e9
+    style BlockRuntimes fill:#fff3e0
+    style EntityRuntimes fill:#f3e5f5
+    style LogicRuntimes fill:#fce4ec
+

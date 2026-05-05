@@ -1,8 +1,8 @@
 package com.myudog.myulib.client.api.ui.component;
 
-import com.myudog.myulib.api.ecs.Component;
+import com.myudog.myulib.api.core.ecs.IComponent;
 
-public class ComputedTransform implements Component {
+public class ComputedTransform implements IComponent {
     public float x;
     public float y;
     public float width;

@@ -1,10 +1,10 @@
 package com.myudog.myulib.api.timer;
 
-import net.minecraft.resources.Identifier;
+import java.util.UUID;
 
 public final class TimerInstance {
     public final int timerEntityId;
-    public final Identifier timerId;
+    public final UUID timerId;
     public final Long ownerEntityId;
     public TimerPayload payload;
     public TimerStatus status;
@@ -12,7 +12,7 @@ public final class TimerInstance {
     public long lastUpdatedTick;
     public long pausedTicks;
 
-    public TimerInstance(int timerEntityId, net.minecraft.resources.Identifier timerId, Long ownerEntityId, TimerPayload payload) {
+    public TimerInstance(int timerEntityId, UUID timerId, Long ownerEntityId, TimerPayload payload) {
         this.timerEntityId = timerEntityId;
         this.timerId = timerId;
         this.ownerEntityId = ownerEntityId;
