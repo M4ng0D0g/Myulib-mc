@@ -42,7 +42,7 @@ public class NbtTeamStorage implements DataStorage<UUID, TeamDefinition> {
         this.storageFile = rootPath.resolve(Myulib.MOD_ID).resolve(FILE_NAME);
 
         try {
-            if (this.storageFile != null && !Files.exists(this.storageFile.getParent())) {
+            if (!Files.exists(this.storageFile.getParent())) {
                 Files.createDirectories(this.storageFile.getParent());
             }
         } catch (Exception e) {
