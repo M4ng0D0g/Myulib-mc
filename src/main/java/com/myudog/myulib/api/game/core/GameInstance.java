@@ -6,6 +6,7 @@ import com.myudog.myulib.api.core.state.StateMachine;
 import com.myudog.myulib.api.effect.SpatialEffectManager;
 import com.myudog.myulib.api.object.event.StateChangeEvent;
 import com.myudog.myulib.api.team.TeamManager;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -330,7 +331,7 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends IS
         return config.SPECTATOR_TEAM;
     }
 
-    public UUID getDefinitionUuid() {
-        return definition.uuid();
+    public Identifier getDefinitionId() {
+        return definition.id();
     }
 }

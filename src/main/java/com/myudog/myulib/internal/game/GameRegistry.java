@@ -2,6 +2,7 @@ package com.myudog.myulib.internal.game;
 
 import com.myudog.myulib.api.game.core.GameDefinition;
 import com.myudog.myulib.api.game.core.GameInstance;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class GameRegistry {
     // 遊戲藍圖註冊表 (採用 LinkedHashMap 維持註冊順序)
-    private final Map<UUID, GameDefinition<?, ?, ?>> definitions = new LinkedHashMap<>();
+    private final Map<Identifier, GameDefinition<?, ?, ?>> definitions = new LinkedHashMap<>();
 
     // 運行中的實例 (執行緒安全)
     private final Map<UUID, GameInstance<?, ?, ?>> instances = new ConcurrentHashMap<>();
@@ -25,7 +26,7 @@ public class GameRegistry {
     // --- Definition 管理 ---
 
     public void registerDefinition(@NotNull GameDefinition<?, ?, ?> definition) {
-        definitions.put(definition.uuid(), definition);
+        definitions.put(definition.id(), definition);
     }
 
     @Nullable

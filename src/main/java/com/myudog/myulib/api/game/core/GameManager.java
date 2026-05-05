@@ -44,7 +44,7 @@ public final class GameManager {
 
     public void register(@NotNull GameDefinition<?, ?, ?> definition) {
         REGISTRY.registerDefinition(definition);
-        DebugLogManager.INSTANCE.log(DebugFeature.GAME, "Registered definition: " + definition.uuid());
+        DebugLogManager.INSTANCE.log(DebugFeature.GAME, "Registered definition: " + definition.id());
     }
 
     @Nullable
