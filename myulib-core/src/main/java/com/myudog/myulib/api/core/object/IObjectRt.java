@@ -1,0 +1,37 @@
+package com.myudog.myulib.api.core.object;
+
+import com.myudog.myulib.api.core.Property;
+import net.minecraft.world.phys.Vec3;
+
+import java.util.Collection;
+import java.util.Optional;
+
+public interface IObjectRt {
+
+    String getToken(); // ID
+    ObjectKind getKind();
+
+    Collection<Property<?>> getProperties();
+    Optional<Property<?>> getProperty(String name);
+
+    default boolean validate() {
+        return true;
+    }
+
+    Vec3 getPosition();
+    void setPosition(Vec3 pos);
+
+    /** 遊戲啟動時初始化並綁定事件 */
+    void onInitialize();
+
+    /** 執行物理生成 (實體生成或方塊放置) */
+    void spawn();
+
+    /** 資源清理 */
+    void destroy();
+
+    /**
+     * 從設定模板建立一份可在單局遊戲中使用的物件副本。
+     */
+    IObjectRt copy();
+}

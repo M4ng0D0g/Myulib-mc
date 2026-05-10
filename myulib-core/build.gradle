@@ -1,0 +1,79 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+base {
+    archivesName = project.name
+}
+
+repositories {
+    gradlePluginPortal()
+    mavenCentral()
+    maven { url = "https://maven.maxhenkel.de/repository/public" }
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
+    }
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        "${project.name}" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    implementation "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
+
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.0"
+    testImplementation "org.junit.platform:junit-platform-suite-engine:1.10.0"
+    testImplementation "org.mockito:mockito-core:5.12.0"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    
+    
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+processResources {
+    def expandProps = [
+            "version": project.version,
+            "voicechat_api_version": project.voicechat_api_version
+    ]
+    inputs.properties expandProps
+    filesMatching("fabric.mod.json") {
+        expand expandProps
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+}
+
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+    inputs.property "archivesName", base.archivesName
+    from("../../LICENSE") {
+        rename { "${it}_${base.archivesName.get()}" }
+    }
+}

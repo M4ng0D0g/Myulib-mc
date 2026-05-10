@@ -1,120 +1,29 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
 
-version = project.mod_version
-group = project.maven_group
+allprojects {
+    apply plugin: 'maven-publish'
 
-base {
-    // 修正：使用更穩定的 Groovy 屬性讀取方式
-    archivesName = project.archives_base_name
-}
+    version = project.mod_version
+    group = project.maven_group
 
-repositories {
-    gradlePluginPortal()
-    mavenCentral()
-
-    maven {
-        url = "https://maven.maxhenkel.de/repository/public"
-    }
-
-    maven {
-        name = "Modrinth"
-        url = "https://api.modrinth.com/maven"
-        content {
-            // 明確指定：只有 maven.modrinth 開頭的套件才准來這裡找
-            includeGroup "maven.modrinth"
-        }
-    }
-
-}
-
-loom {
-    splitEnvironmentSourceSets()
-    mods {
-        // 修正：在 Groovy DSL 中直接使用字串定義，拔除 'register'
-        "Myulib" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.client
-        }
-    }
-}
-
-dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-    implementation "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
-
-    testImplementation "org.junit.jupiter:junit-jupiter:5.10.0"
-    testImplementation "org.junit.platform:junit-platform-suite-engine:1.10.0"
-    testImplementation "org.mockito:mockito-core:5.12.0"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
-}
-
-// 修正：統一使用原生的 Groovy Task 區塊宣告
-processResources {
-    def expandProps = [
-            "version": project.version,
-            "voicechat_api_version": project.voicechat_api_version
-    ]
-
-    // 2. 讓 Gradle 知道這些變數會影響輸出（用於快取判定）
-    inputs.properties expandProps
-
-    // 3. 執行替換
-    filesMatching("fabric.mod.json") {
-        expand expandProps
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
-}
-
-java {
-    withSourcesJar()
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
-}
-
-// 保留您優秀的自定義測試腳本！
-tasks.register('runAnimationTests', JavaExec) {
-    group = 'verification'
-    description = 'Runs the standalone animation tests.'
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'com.myudog.myulib.api.animation.AnimationTestSuite'
-}
-
-tasks.register('runGameFeatureTests', JavaExec) {
-    group = 'verification'
-    description = 'Runs the standalone game feature tests.'
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'com.myudog.myulib.api.game.GameFeatureTestSuite'
-}
-
-jar {
-    inputs.property "archivesName", base.archivesName
-    from("LICENSE") {
-        rename { "${it}_${base.archivesName.get()}" }
-    }
-}
-
-publishing {
-    publications {
-        create("mavenJava", MavenPublication) {
-            from components.java
-        }
-    }
     repositories {
-        // 發布用的儲存庫設定
+        mavenLocal()
+        mavenCentral()
+        maven { url = "https://maven.fabricmc.net/" }
+    }
+}
+
+subprojects {
+    // Only subprojects are mod projects in this setup
+    afterEvaluate {
+        publishing {
+            publications {
+                mavenJava(MavenPublication) {
+                    from components.java
+                }
+            }
+        }
     }
 }

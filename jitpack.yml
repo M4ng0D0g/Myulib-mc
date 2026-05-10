@@ -1,6 +1,2 @@
 jdk:
   - openjdk25
-
-# 告訴 JitPack 執行編譯任務
-install:
-  - ./gradlew publishToMavenLocal -Dmaven.repo.local=$HOME/.m2/repository

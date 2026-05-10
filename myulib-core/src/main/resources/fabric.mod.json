@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "myulib-core",
+  "version": "${version}",
+  "name": "MyuLib Core",
+  "description": "Core utilities for MyuLib.",
+  "authors": [
+    "M4ng0D0g"
+  ],
+  "contact": {
+    "homepage": "https://github.com/M4ng0D0g/MyuLib",
+    "sources": "https://github.com/M4ng0D0g/MyuLib"
+  },
+  "license": "MIT",
+  "icon": "assets/myulib/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.myudog.myulib.MyulibCore"
+    ],
+    "voicechat": [
+      "com.myudog.myulib.api.bridge.voice.MyuVoicePlugin"
+    ],
+    "client": [
+      "com.myudog.myulib.client.MyulibCoreClient"
+    ]
+  },
+  "mixins": [
+    "myulib.mixins.json",
+    "myulib.client.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.6",
+    "minecraft": "~26.1",
+    "java": ">=25",
+    "fabric-api": "*",
+    "voicechat_api": ">=${voicechat_api_version}"
+  }
+}

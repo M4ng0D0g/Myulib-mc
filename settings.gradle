@@ -14,3 +14,5 @@ pluginManagement {
 }
 
 rootProject.name = 'Myulib-mc'
+include 'myulib-core'
+include 'myulib-framework'
