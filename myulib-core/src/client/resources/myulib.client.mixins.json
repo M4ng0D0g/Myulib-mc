@@ -1,5 +1,6 @@
 {
 	"required": true,
+	"refmap": "myulib-core-refmap.json",
 	"package": "com.myudog.myulib.client.mixin.client",
 	"compatibilityLevel": "JAVA_25",
 	"client": [

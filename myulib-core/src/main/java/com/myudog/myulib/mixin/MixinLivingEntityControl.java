@@ -38,7 +38,7 @@ public abstract class MixinLivingEntityControl implements
     @Shadow protected boolean jumping;
     @Shadow public abstract void setYHeadRot(float yHeadRot);
     @Shadow public float yBodyRot;
-    @Shadow public abstract void setSneaking(boolean sneaking);
+    @Shadow public abstract void setShiftKeyDown(boolean sneaking);
     @Shadow public abstract void setSprinting(boolean sprinting);
     @Shadow public abstract void swing(InteractionHand hand);
 
@@ -76,7 +76,7 @@ public abstract class MixinLivingEntityControl implements
         boolean pressed = intent.action() == InputAction.PRESS;
         switch (intent.type()) {
             case JUMP -> this.jumping = pressed;
-            case SNEAK -> this.setSneaking(pressed);
+            case SNEAK -> this.setShiftKeyDown(pressed);
             case SPRINT -> this.setSprinting(pressed);
         }
     }

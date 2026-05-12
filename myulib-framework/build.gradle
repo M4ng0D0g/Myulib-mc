@@ -25,6 +25,9 @@ loom {
             sourceSet sourceSets.client
         }
     }
+    mixin {
+        defaultRefmapName = "myulib-framework-refmap.json"
+    }
 }
 
 dependencies {
@@ -55,9 +58,7 @@ processResources {
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
-}
+
 
 java {
     withSourcesJar()
