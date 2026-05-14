@@ -1,6 +1,5 @@
 package com.myudog.myulib.api.framework.permission;
 
-import com.myudog.myulib.Myulib;
 import com.myudog.myulib.MyulibFramework;
 import com.myudog.myulib.api.framework.field.FieldDefinition;
 import com.myudog.myulib.api.framework.field.FieldManager;
@@ -72,7 +71,7 @@ public final class PermissionGate {
         List<String> groups = RoleGroupManager.INSTANCE.getSortedGroupIdsOf(player.getUUID());
 
         // 將場地 UUID 轉為 Identifier 以利於權限比對
-        Identifier fieldIdentifier = field.map(fieldDefinition -> Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "field/" + fieldDefinition.uuid())).orElse(null);
+        Identifier fieldIdentifier = field.map(fieldDefinition -> Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "field/" + fieldDefinition.uuid())).orElse(null);
 
         PermissionDecision decision = PermissionManager.INSTANCE.evaluate(
                 player.getUUID(),

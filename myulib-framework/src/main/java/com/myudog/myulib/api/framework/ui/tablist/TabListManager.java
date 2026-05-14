@@ -1,7 +1,6 @@
 package com.myudog.myulib.api.framework.ui.tablist;
 
-import com.myudog.myulib.Myulib;
-
+import com.myudog.myulib.MyulibFramework;
 import com.myudog.myulib.api.framework.rolegroup.RoleGroupDefinition;
 import com.myudog.myulib.api.framework.rolegroup.RoleGroupManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -88,11 +87,11 @@ public final class TabListManager {
 
     private Identifier parseGroupId(String rawId) {
         if (rawId == null || rawId.isBlank()) {
-            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "everyone");
+            return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "everyone");
         }
         if (rawId.contains(":")) {
             return Identifier.parse(rawId);
         }
-        return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, rawId);
+        return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, rawId);
     }
 }

@@ -1,11 +1,13 @@
 package com.myudog.myulib.api.framework.ui.network;
 
-import com.myudog.myulib.Myulib;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.myudog.myulib.MyulibFramework;
+import com.myudog.myulib.api.framework.game.GameConfig;
+import com.myudog.myulib.api.framework.game.GameInstance;
+import com.myudog.myulib.api.framework.game.GameManager;
 import com.myudog.myulib.api.framework.field.FieldDefinition;
 import com.myudog.myulib.api.framework.field.FieldManager;
 import com.myudog.myulib.api.framework.permission.PermissionAction;
@@ -33,10 +35,10 @@ import java.util.Objects;
 
 public final class ConfigUiNetworking {
     private static final Gson GSON = new Gson();
-    public static final Identifier SNAPSHOT_REQUEST_CHANNEL = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "config_snapshot_request");
-    public static final Identifier SNAPSHOT_CHANNEL = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "config_snapshot");
-    public static final Identifier APPLY_CHANNEL = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "config_apply");
-    public static final Identifier APPLY_RESULT_CHANNEL = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "config_apply_result");
+    public static final Identifier SNAPSHOT_REQUEST_CHANNEL = Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "config_snapshot_request");
+    public static final Identifier SNAPSHOT_CHANNEL = Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "config_snapshot");
+    public static final Identifier APPLY_CHANNEL = Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "config_apply");
+    public static final Identifier APPLY_RESULT_CHANNEL = Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "config_apply_result");
 
     private static boolean payloadsRegistered;
     private static boolean receiversRegistered;
@@ -235,7 +237,7 @@ public final class ConfigUiNetworking {
                         PermissionManager.INSTANCE.dimension(dimId).forGroup(group).set(action, decision);
                     }
                     case FIELD -> {
-                        Identifier fieldId = parseScopeIdentifier(scopeIdRaw, Myulib.MOD_ID);
+                        Identifier fieldId = parseScopeIdentifier(scopeIdRaw, MyulibFramework.MOD_ID);
                         PermissionManager.INSTANCE.field(fieldId).forGroup(group).set(action, decision);
                     }
                     case USER -> {
@@ -243,6 +245,33 @@ public final class ConfigUiNetworking {
                 }
             }
             PermissionManager.INSTANCE.save();
+        }
+
+        JsonArray gameConfigPatches = root.getAsJsonArray("gameConfigPatches");
+        if (gameConfigPatches != null) {
+            for (JsonElement patchElement : gameConfigPatches) {
+                if (!(patchElement instanceof JsonObject patch)) {
+                    continue;
+                }
+                String instanceId = patch.has("instanceId") ? patch.get("instanceId").getAsString() : "";
+                String propertyName = patch.has("property") ? patch.get("property").getAsString() : "";
+                String value = patch.has("value") ? patch.get("value").getAsString() : "";
+
+                GameInstance<?, ?, ?> instance = GameManager.INSTANCE.getInstance(instanceId);
+                if (instance == null) {
+                    continue;
+                }
+                if (instance.isInitialized()) {
+                    throw new IllegalStateException("game_config_locked:" + instanceId);
+                }
+                GameConfig config = instance.getConfig();
+                if (config.getProperty(propertyName).isEmpty()) {
+                    throw new IllegalArgumentException("game_config_unknown_property:" + propertyName);
+                }
+                if (!config.setPropertyFromString(propertyName, value)) {
+                    throw new IllegalArgumentException("game_config_parse_failed:" + propertyName + "=" + value);
+                }
+            }
         }
     }
 
@@ -292,6 +321,25 @@ public final class ConfigUiNetworking {
         }
         permissions.add("fields", fields);
         root.add("permissions", permissions);
+
+        JsonArray gameConfigs = new JsonArray();
+        for (GameInstance<?, ?, ?> instance : GameManager.INSTANCE.getInstances()) {
+            JsonObject item = new JsonObject();
+            item.addProperty("instanceId", instance.getInstanceId());
+            item.addProperty("definition", instance.getDefinitionId().toString());
+            item.addProperty("initialized", instance.isInitialized());
+            item.addProperty("started", instance.isStarted());
+
+            JsonObject properties = new JsonObject();
+            GameConfig config = instance.getConfig();
+            for (String name : config.getPropertyNames()) {
+                String value = config.getPropertyAsString(name);
+                properties.addProperty(name, value == null ? "" : value);
+            }
+            item.add("properties", properties);
+            gameConfigs.add(item);
+        }
+        root.add("gameConfigs", gameConfigs);
 
         return GSON.toJson(root);
     }

@@ -21,7 +21,8 @@ import java.util.function.Function;
 public record Property<T>(
         String name,
         Class<T> type,
-        Function<String, T> parser
+        Function<String, T> parser,
+        Function<T, String> formatter
 ) {
     /**
      * 將傳入的字串輸入，透過預先定義好的解析策略轉換為目標型別。
@@ -31,5 +32,9 @@ public record Property<T>(
      */
     public T parse(String input) {
         return parser.apply(input);
+    }
+
+    public String toString(T value) {
+        return formatter.apply(value);
     }
 }

@@ -1,6 +1,6 @@
 package com.myudog.myulib.api.framework.game.features;
 
-import com.myudog.myulib.api.framework.game.core.GameInstance;
+import com.myudog.myulib.api.framework.game.GameInstance;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

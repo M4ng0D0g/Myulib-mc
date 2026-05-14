@@ -1,7 +1,6 @@
 package com.myudog.myulib.api.framework.field.network;
 
-import com.myudog.myulib.Myulib;
-
+import com.myudog.myulib.MyulibFramework;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -15,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class FieldVisualizationNetworking {
-    public static final Identifier CHANNEL = Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "field_visualization_sync");
+    public static final Identifier CHANNEL = Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "field_visualization_sync");
 
     public record FieldVisualizationPayload(List<AABB> boxes) implements CustomPacketPayload {
         public static final Type<FieldVisualizationPayload> TYPE = new Type<>(CHANNEL);

@@ -1,37 +1,43 @@
 package com.myudog.myulib.api.framework.command;
 
-import com.myudog.myulib.Myulib;
-
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.myudog.myulib.MyulibFramework;
 import com.myudog.myulib.api.core.control.ControlManager;
 import com.myudog.myulib.api.core.control.ControlType;
 import com.myudog.myulib.api.core.debug.DebugFeature;
 import com.myudog.myulib.api.core.debug.DebugLogManager;
 import com.myudog.myulib.api.core.debug.DebugTraceManager;
 import com.myudog.myulib.api.framework.field.FieldDefinition;
+import com.myudog.myulib.api.framework.field.command.FieldCommand;
 import com.myudog.myulib.api.framework.field.FieldVisualizationManager;
 import com.myudog.myulib.api.framework.field.FieldManager;
 import com.myudog.myulib.api.core.hologram.HologramDefinition;
 import com.myudog.myulib.api.core.hologram.HologramManager;
 import com.myudog.myulib.api.core.hologram.HologramFeature;
 import com.myudog.myulib.api.core.hologram.network.HologramNetworking;
-import com.myudog.myulib.api.framework.game.core.GameInstance;
-import com.myudog.myulib.api.framework.game.core.GameManager;
+import com.myudog.myulib.api.framework.game.GameInstance;
+import com.myudog.myulib.api.framework.game.GameManager;
+import com.myudog.myulib.api.framework.game.command.GameCommand;
 import com.myudog.myulib.api.framework.permission.PermissionAction;
+import com.myudog.myulib.api.framework.permission.command.PermissionCommand;
 import com.myudog.myulib.api.framework.permission.PermissionDecision;
 import com.myudog.myulib.api.framework.permission.PermissionManager;
 import com.myudog.myulib.api.framework.permission.ScopeLayer;
 import com.myudog.myulib.api.framework.rolegroup.RoleGroupDefinition;
+import com.myudog.myulib.api.framework.rolegroup.command.RoleGroupCommand;
 import com.myudog.myulib.api.framework.rolegroup.RoleGroupManager;
 import com.myudog.myulib.api.framework.team.TeamColor;
+import com.myudog.myulib.api.framework.team.command.TeamCommand;
 import com.myudog.myulib.api.framework.team.TeamDefinition;
 import com.myudog.myulib.api.framework.team.TeamManager;
 import com.myudog.myulib.api.core.timer.TimerDefinition;
 import com.myudog.myulib.api.core.timer.TimerManager;
+import com.myudog.myulib.api.framework.timer.command.TimerCommand;
+import com.myudog.myulib.api.framework.debug.command.DebugCommand;
 import com.myudog.myulib.api.core.command.CommandRegistry;
 import com.myudog.myulib.api.core.command.CommandResult;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -66,13 +72,17 @@ import java.util.UUID;
  * 2. Minecraft ??Brigadier 蝟餌絞嚗?潭?靘策?拙振?恣?雿輻???脣?誘嚗?myulib ...嚗?
  */
 public class AccessCommandService {
-    public static final String COMMAND_PREFIX = Myulib.MOD_ID + ":";
+    public static final String COMMAND_PREFIX = MyulibFramework.MOD_ID + ":";
     private static final Set<UUID> TRACKED_TIMERS = new LinkedHashSet<>();
+
+    public static Permission.HasCommandLevel gamemasterPermission() {
+        return new Permission.HasCommandLevel(PermissionLevel.GAMEMASTERS);
+    }
 
     public static void registerDefaults() {
         registerLocalCommands();
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-            registerLegacyBaseCommand(dispatcher, Myulib.MOD_ID);
+            registerLegacyBaseCommand(dispatcher, MyulibFramework.MOD_ID);
             registerFeatureCrudCommands(dispatcher);
         });
     }
@@ -136,15 +146,15 @@ public class AccessCommandService {
     }
 
     private static void registerFeatureCrudCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
-        registerFieldCrud(dispatcher);
+        FieldCommand.register(dispatcher);
         registerProjectionCrud(dispatcher);
-        registerPermissionCrud(dispatcher);
-        registerRoleGroupCrud(dispatcher);
-        registerTeamCrud(dispatcher);
-        registerGameCrud(dispatcher);
-        registerTimerCrud(dispatcher);
+        PermissionCommand.register(dispatcher);
+        RoleGroupCommand.register(dispatcher);
+        TeamCommand.register(dispatcher);
+        GameCommand.register(dispatcher);
+        TimerCommand.register(dispatcher);
         registerControlCrud(dispatcher);
-        registerDebugCommands(dispatcher);
+        DebugCommand.register(dispatcher);
     }
 
     private static void registerControlCrud(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -365,7 +375,7 @@ public class AccessCommandService {
                                 })))
                 .then(Commands.literal("show")
                         .then(Commands.argument("feature", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(HologramFeatureSuggestions(), builder))
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(hologramFeatureSuggestions(), builder))
                                 .then(Commands.argument("enabled", StringArgumentType.word())
                                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("on", "off"), builder))
                                         .executes(context -> {
@@ -575,7 +585,7 @@ public class AccessCommandService {
                                 })))
                 .then(Commands.literal("show")
                         .then(Commands.argument("feature", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(HologramFeatureSuggestions(), builder))
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(hologramFeatureSuggestions(), builder))
                                 .then(Commands.argument("enabled", StringArgumentType.word())
                                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("on", "off"), builder))
                                         .executes(context -> {
@@ -620,7 +630,7 @@ public class AccessCommandService {
                                                     String group = normalizeGroupToken(StringArgumentType.getString(context, "group"));
                                                     PermissionAction action = parseAction(StringArgumentType.getString(context, "action"));
                                                     PermissionDecision decision = parseDecision(StringArgumentType.getString(context, "decision"));
-                                                    setScopedGroupPermission(ScopeLayer.GLOBAL, Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "global"), group, action, decision);
+                                                    setScopedGroupPermission(ScopeLayer.GLOBAL, Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "global"), group, action, decision);
                                                     return reply(context.getSource(), "permission=set:global," + group + "," + action + "=" + decision);
                                                 })))))
                 .then(Commands.argument("scope", StringArgumentType.word())
@@ -659,7 +669,7 @@ public class AccessCommandService {
                             var groups = RoleGroupManager.INSTANCE.getSortedGroupIdsOf(player.getUUID());
                             Identifier dimId = player.level().dimension().identifier();
                             FieldDefinition field = FieldManager.INSTANCE.findAt(dimId, player.position()).orElse(null);
-                            Identifier fieldId = field == null ? null : Identifier.fromNamespaceAndPath(Myulib.MOD_ID, FieldDefinition.ROUTE + "/" + field.id());
+                            Identifier fieldId = field == null ? null : Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, FieldDefinition.ROUTE + "/" + field.id());
                             return reply(context.getSource(), renderFlattenedPlayerPermissions(player.getName().getString(), player.getUUID(), groups, fieldId, dimId));
                         })));
 
@@ -840,119 +850,7 @@ public class AccessCommandService {
     }
 
     private static void registerGameCrud(CommandDispatcher<CommandSourceStack> dispatcher) {
-        var root = Commands.literal(COMMAND_PREFIX + "game")
-                .requires(source -> source.permissions().hasPermission(new Permission.HasCommandLevel(PermissionLevel.GAMEMASTERS)));
-
-        // /myulib game create <definition> <instanceId>
-        root.then(Commands.literal("create")
-                .then(Commands.argument("definition", StringArgumentType.word())
-                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameDefinitionSuggestions(), builder))
-                        .then(Commands.argument("instanceId", StringArgumentType.word())
-                                .executes(context -> {
-                                    Identifier defId = Identifier.parse(StringArgumentType.getString(context, "definition"));
-                                    String instanceId = StringArgumentType.getString(context, "instanceId");
-                                    GameManager.INSTANCE.createInstance(defId, instanceId, context.getSource().getLevel());
-                                    return reply(context.getSource(), "game=created:" + instanceId);
-                                }))));
-
-        // /myulib game config <instanceId> <variable> <value>
-        root.then(Commands.literal("config")
-                .then(Commands.argument("instanceId", StringArgumentType.word())
-                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                        .then(Commands.argument("variable", StringArgumentType.word())
-                                .suggests((context, builder) -> {
-                                    String instanceId = StringArgumentType.getString(context, "instanceId");
-                                    var instance = GameManager.INSTANCE.getInstance(instanceId);
-                                    if (instance != null) {
-                                        return SharedSuggestionProvider.suggest(instance.getConfig().getVariables().keySet(), builder);
-                                    }
-                                    return builder.buildFuture();
-                                })
-                                .then(Commands.argument("value", StringArgumentType.greedyString())
-                                        .executes(context -> {
-                                            String instanceId = StringArgumentType.getString(context, "instanceId");
-                                            String variable = StringArgumentType.getString(context, "variable");
-                                            String value = StringArgumentType.getString(context, "value");
-                                            var instance = GameManager.INSTANCE.getInstance(instanceId);
-                                            if (instance == null) return reply(context.getSource(), "game=not_found");
-                                            instance.getConfig().setVariable(variable, value);
-                                            return reply(context.getSource(), "game=config:" + instanceId + "," + variable + "=" + value);
-                                        })))));
-
-        // /myulib game init <instanceId>
-        root.then(Commands.literal("init")
-                .then(Commands.argument("instanceId", StringArgumentType.word())
-                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                        .executes(context -> {
-                            String instanceId = StringArgumentType.getString(context, "instanceId");
-                            boolean success = GameManager.INSTANCE.initInstance(instanceId);
-                            return reply(context.getSource(), success ? "game=initialized:" + instanceId : "game=init_failed");
-                        })));
-
-        // /myulib game join <player> <instanceId>
-        root.then(Commands.literal("join")
-                .then(Commands.argument("player", EntityArgument.player())
-                        .then(Commands.argument("instanceId", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                .executes(context -> {
-                                    ServerPlayer player = EntityArgument.getPlayer(context, "player");
-                                    String instanceId = StringArgumentType.getString(context, "instanceId");
-                                    boolean success = GameManager.INSTANCE.joinPlayer(instanceId, player.getUUID(), null);
-                                    return reply(context.getSource(), success ? "game=joined:" + instanceId : "game=join_failed");
-                                }))));
-
-        // /myulib game leave <player> <instanceId>
-        root.then(Commands.literal("leave")
-                .then(Commands.argument("player", EntityArgument.player())
-                        .then(Commands.argument("instanceId", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                                .executes(context -> {
-                                    ServerPlayer player = EntityArgument.getPlayer(context, "player");
-                                    String instanceId = StringArgumentType.getString(context, "instanceId");
-                                    GameManager.INSTANCE.leavePlayer(instanceId, player.getUUID());
-                                    return reply(context.getSource(), "game=left:" + instanceId);
-                                }))));
-
-        // /myulib game leave_all <player>
-        root.then(Commands.literal("leave_all")
-                .then(Commands.argument("player", EntityArgument.player())
-                        .executes(context -> {
-                            ServerPlayer player = EntityArgument.getPlayer(context, "player");
-                            GameManager.INSTANCE.leaveAllInstances(player.getUUID());
-                            return reply(context.getSource(), "game=left_all");
-                        })));
-
-        // /myulib game start <instanceId>
-        root.then(Commands.literal("start")
-                .then(Commands.argument("instanceId", StringArgumentType.word())
-                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                        .executes(context -> {
-                            String instanceId = StringArgumentType.getString(context, "instanceId");
-                            boolean success = GameManager.INSTANCE.startInstance(instanceId);
-                            return reply(context.getSource(), success ? "game=started:" + instanceId : "game=start_failed");
-                        })));
-
-        // /myulib game shutdown <instanceId>
-        root.then(Commands.literal("shutdown")
-                .then(Commands.argument("instanceId", StringArgumentType.word())
-                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                        .executes(context -> {
-                            String instanceId = StringArgumentType.getString(context, "instanceId");
-                            boolean success = GameManager.INSTANCE.shutdownInstance(instanceId);
-                            return reply(context.getSource(), success ? "game=shutdown:" + instanceId : "game=shutdown_failed");
-                        })));
-
-        // /myulib game delete <instanceId>
-        root.then(Commands.literal("delete")
-                .then(Commands.argument("instanceId", StringArgumentType.word())
-                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(gameInstanceSuggestions(), builder))
-                        .executes(context -> {
-                            String instanceId = StringArgumentType.getString(context, "instanceId");
-                            boolean success = GameManager.INSTANCE.deleteInstance(instanceId);
-                            return reply(context.getSource(), success ? "game=deleted:" + instanceId : "game=delete_failed");
-                        })));
-
-        dispatcher.register(root);
+        GameCommand.register(dispatcher);
     }
     
     private static void registerTimerCrud(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -1014,15 +912,15 @@ public class AccessCommandService {
         dispatcher.register(root);
     }
 
-    private static PermissionAction parseAction(String raw) {
+    public static PermissionAction parseAction(String raw) {
         return PermissionAction.valueOf(raw.toUpperCase());
     }
 
-    private static PermissionDecision parseDecision(String raw) {
+    public static PermissionDecision parseDecision(String raw) {
         return PermissionDecision.valueOf(raw.toUpperCase());
     }
 
-    private static TeamColor parseTeamColor(String raw) {
+    public static TeamColor parseTeamColor(String raw) {
         return TeamColor.valueOf(raw.toUpperCase());
     }
 
@@ -1041,17 +939,17 @@ public class AccessCommandService {
         };
     }
 
-    private static UUID resolveFieldIdToken(String token) { return resolveStableUuidToken(token); }
+    public static UUID resolveFieldIdToken(String token) { return resolveStableUuidToken(token); }
 
     private static void ensureTicTacToeBlueTeamExists() {
         // no-op: retained for compatibility with older command flows
     }
 
-    private static UUID resolveRoleGroupIdToken(String token) { return resolveStableUuidToken(token); }
+    public static UUID resolveRoleGroupIdToken(String token) { return resolveStableUuidToken(token); }
 
-    private static UUID resolveTeamIdToken(String token) { return resolveStableUuidToken(token); }
+    public static UUID resolveTeamIdToken(String token) { return resolveStableUuidToken(token); }
 
-    private static UUID resolveTimerIdToken(String token) { return resolveStableUuidToken(token); }
+    public static UUID resolveTimerIdToken(String token) { return resolveStableUuidToken(token); }
 
     private static String normalizeGameInstanceName(String token) {
         return token == null ? "" : token.trim().toLowerCase();
@@ -1073,7 +971,7 @@ public class AccessCommandService {
                 + ",control_bindings=" + ControlManager.INSTANCE.controlledCount();
     }
 
-    private static int reply(CommandSourceStack source, String message) {
+    public static int reply(CommandSourceStack source, String message) {
         source.sendSuccess(() -> Component.literal(message), true);
         DebugLogManager.INSTANCE.log(DebugFeature.COMMAND,
                 "source=" + source.getTextName() + ",message=" + message.replace('\n', '|'));
@@ -1113,11 +1011,11 @@ public class AccessCommandService {
         FieldManager.INSTANCE.save();
     }
 
-    private static List<String> permissionActionNames() {
+    public static List<String> permissionActionNames() {
         return java.util.Arrays.stream(PermissionAction.values()).map(Enum::name).toList();
     }
 
-    private static List<String> permissionDecisionNames() {
+    public static List<String> permissionDecisionNames() {
         return java.util.Arrays.stream(PermissionDecision.values()).map(Enum::name).toList();
     }
 
@@ -1165,11 +1063,11 @@ public class AccessCommandService {
                 + "\n" + type.name() + "=" + (enabled ? "enable" : "disable");
     }
 
-    private static ScopeLayer parseScope(String raw) {
+    public static ScopeLayer parseScope(String raw) {
         return ScopeLayer.valueOf(raw.toUpperCase());
     }
 
-    private static Identifier resolveScopeId(ScopeLayer scope, String token) {
+    public static Identifier resolveScopeId(ScopeLayer scope, String token) {
         return switch (scope) {
             case FIELD -> {
                 Identifier fieldId = PermissionManager.INSTANCE.resolveFieldShortId(token);
@@ -1179,12 +1077,12 @@ public class AccessCommandService {
                 Identifier dimId = PermissionManager.INSTANCE.resolveDimensionShortId(token);
                 yield dimId != null ? dimId : Identifier.parse(token);
             }
-            case GLOBAL -> Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "global");
-            case USER -> Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "user");
+            case GLOBAL -> Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "global");
+            case USER -> Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "user");
         };
     }
 
-    private static void setScopedGroupPermission(ScopeLayer scope, Identifier scopeId, String group, PermissionAction action, PermissionDecision decision) {
+    public static void setScopedGroupPermission(ScopeLayer scope, Identifier scopeId, String group, PermissionAction action, PermissionDecision decision) {
         String normalized = PermissionManager.INSTANCE.normalizeGroupName(group);
         switch (scope) {
             case GLOBAL -> PermissionManager.INSTANCE.global().forGroup(normalized).set(action, decision);
@@ -1194,7 +1092,7 @@ public class AccessCommandService {
         PermissionManager.INSTANCE.save();
     }
 
-    private static String renderPermissionGroupList(String group, ScopeLayer scope, Identifier scopeId, String mode) {
+    public static String renderPermissionGroupList(String group, ScopeLayer scope, Identifier scopeId, String mode) {
         String normalized = PermissionManager.INSTANCE.normalizeGroupName(group);
         StringBuilder builder = new StringBuilder();
         builder.append("permission=list\n");
@@ -1222,11 +1120,11 @@ public class AccessCommandService {
         return field == null ? null : field.dimensionId();
     }
 
-    private static String normalizeGroupToken(String token) {
+    public static String normalizeGroupToken(String token) {
         return PermissionManager.INSTANCE.normalizeGroupName(token);
     }
 
-    private static AABB cuboidFromCorners(double x1, double y1, double z1, double x2, double y2, double z2) {
+    public static AABB cuboidFromCorners(double x1, double y1, double z1, double x2, double y2, double z2) {
         return new AABB(
                 Math.min(x1, x2),
                 Math.min(y1, y2),
@@ -1237,19 +1135,19 @@ public class AccessCommandService {
         );
     }
 
-    private static List<String> scopeNames() {
+    public static List<String> scopeNames() {
         return List.of("global", "dimension", "field");
     }
 
-    private static List<String> scopeNamesForScopedSet() {
+    public static List<String> scopeNamesForScopedSet() {
         return List.of("dimension", "field");
     }
 
-    private static List<String> fieldModeSuggestions() {
+    public static List<String> fieldModeSuggestions() {
         return List.of("edges-only", "full", "labels-only");
     }
 
-    private static List<String> HologramFeatureSuggestions() {
+    public static List<String> hologramFeatureSuggestions() {
         return java.util.Arrays.stream(HologramFeature.values()).map(HologramFeature::token).toList();
     }
 
@@ -1265,21 +1163,21 @@ public class AccessCommandService {
         return resolveStableUuidToken(token);
     }
 
-    private static String onOff(boolean value) {
+    public static String onOff(boolean value) {
         return value ? "on" : "off";
     }
 
-    private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String> permissionActionArgument() {
+    public static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String> permissionActionArgument() {
         return Commands.argument("action", StringArgumentType.word())
                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(permissionActionNames(), builder));
     }
 
-    private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String> permissionDecisionArgument() {
+    public static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String> permissionDecisionArgument() {
         return Commands.argument("decision", StringArgumentType.word())
                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(permissionDecisionNames(), builder));
     }
 
-    private static List<String> rolegroupIdSuggestions() {
+    public static List<String> rolegroupIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         for (RoleGroupDefinition group : RoleGroupManager.INSTANCE.groups()) {
             suggestions.add(group.token().toString());
@@ -1287,7 +1185,7 @@ public class AccessCommandService {
         return List.copyOf(suggestions);
     }
 
-    private static List<String> fieldIdSuggestions() {
+    public static List<String> fieldIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         for (FieldDefinition field : FieldManager.INSTANCE.all().values()) {
             suggestions.add(field.token().toString());
@@ -1295,11 +1193,11 @@ public class AccessCommandService {
         return List.copyOf(suggestions);
     }
 
-    private static List<String> debugFeatureSuggestions() {
+    public static List<String> debugFeatureSuggestions() {
         return java.util.Arrays.stream(DebugFeature.values()).map(DebugFeature::token).toList();
     }
 
-    private static List<String> permissionGroupSuggestions() {
+    public static List<String> permissionGroupSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         suggestions.add("everyone");
 
@@ -1325,7 +1223,7 @@ public class AccessCommandService {
         return List.copyOf(suggestions);
     }
 
-    private static List<String> scopeIdSuggestions(String scopeRaw) {
+    public static List<String> scopeIdSuggestions(String scopeRaw) {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         ScopeLayer scope;
         try {
@@ -1355,7 +1253,7 @@ public class AccessCommandService {
         return List.copyOf(suggestions);
     }
 
-    private static List<String> timerIdSuggestions() {
+    public static List<String> timerIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         for (UUID id : TRACKED_TIMERS) {
             suggestions.add(id.toString());
@@ -1363,7 +1261,7 @@ public class AccessCommandService {
         return List.copyOf(suggestions);
     }
 
-    private static List<String> teamIdSuggestions() {
+    public static List<String> teamIdSuggestions() {
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
         for (TeamDefinition team : TeamManager.INSTANCE.all()) {
             suggestions.add(team.token().toString());
@@ -1387,7 +1285,7 @@ public class AccessCommandService {
         return GameManager.INSTANCE.getInstances().stream().map(GameInstance::getInstanceId).toList();
     }
 
-    private static String renderFlattenedPlayerPermissions(String playerName, java.util.UUID playerId, List<String> groups, Identifier fieldId, Identifier dimensionId) {
+    public static String renderFlattenedPlayerPermissions(String playerName, java.util.UUID playerId, List<String> groups, Identifier fieldId, Identifier dimensionId) {
         StringBuilder builder = new StringBuilder();
         builder.append("permission=player\n")
                 .append("player=").append(playerName)
@@ -1438,30 +1336,30 @@ public class AccessCommandService {
         }
     }
 
-    private static Identifier toScopedMyulibIdentifier(String route, String token) {
+    public static Identifier toScopedMyulibIdentifier(String route, String token) {
         if (token == null || token.isBlank()) {
-            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, route == null || route.isBlank() ? "everyone" : route + "/everyone");
+            return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, route == null || route.isBlank() ? "everyone" : route + "/everyone");
         }
         String value = token.trim();
         if (!value.contains(":")) {
             if (value.startsWith(route + "/")) {
-                return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, value);
+                return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, value);
             }
-            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, route + "/" + value);
+            return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, route + "/" + value);
         }
         Identifier parsed = Identifier.parse(value);
-        return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, parsed.getPath());
+        return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, parsed.getPath());
     }
 
     private static Identifier toMyulibIdentifier(String token) {
         if (token == null || token.isBlank()) {
-            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, "everyone");
+            return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, "everyone");
         }
         String value = token.trim();
         if (!value.contains(":")) {
-            return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, value);
+            return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, value);
         }
         Identifier parsed = Identifier.parse(value);
-        return Identifier.fromNamespaceAndPath(Myulib.MOD_ID, parsed.getPath());
+        return Identifier.fromNamespaceAndPath(MyulibFramework.MOD_ID, parsed.getPath());
     }
 }

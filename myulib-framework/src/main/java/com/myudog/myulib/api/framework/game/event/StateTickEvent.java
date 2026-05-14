@@ -1,10 +1,10 @@
-package com.myudog.myulib.api.framework.game.core.event;
+package com.myudog.myulib.api.framework.game.event;
 
 import com.myudog.myulib.api.core.event.IEvent;
-import com.myudog.myulib.api.framework.game.core.GameConfig;
-import com.myudog.myulib.api.framework.game.core.GameData;
-import com.myudog.myulib.api.framework.game.core.GameInstance;
-import com.myudog.myulib.api.framework.game.core.IGameContext;
+import com.myudog.myulib.api.framework.game.GameConfig;
+import com.myudog.myulib.api.framework.game.GameData;
+import com.myudog.myulib.api.framework.game.GameInstance;
+import com.myudog.myulib.api.framework.game.IGameContext;
 
 public class StateTickEvent<C extends GameConfig, D extends GameData, S extends com.myudog.myulib.api.core.state.IState<IGameContext>> implements IEvent {
     private final GameInstance<C, D, S> instance;

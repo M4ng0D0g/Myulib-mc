@@ -1,7 +1,6 @@
 package com.myudog.myulib.api.framework.permission.storage;
 
-import com.myudog.myulib.Myulib;
-
+import com.myudog.myulib.MyulibFramework;
 import com.myudog.myulib.api.framework.permission.PermissionAction;
 import com.myudog.myulib.api.framework.permission.PermissionDecision;
 import com.myudog.myulib.api.framework.permission.PermissionScope;
@@ -32,14 +31,14 @@ public class NbtPermissionStorage implements DataStorage<String, PermissionScope
     @Override
     public void initialize(MinecraftServer server) {
         Path rootPath = NbtIoHelper.resolveRootPath(server).toAbsolutePath().normalize();
-        this.storageFile = rootPath.resolve(Myulib.MOD_ID).resolve(FILE_NAME);
+        this.storageFile = rootPath.resolve(MyulibFramework.MOD_ID).resolve(FILE_NAME);
 
         try {
             if (!Files.exists(this.storageFile.getParent())) {
                 Files.createDirectories(this.storageFile.getParent());
             }
         } catch (Exception e) {
-            Myulib.LOGGER.error("Failed to create Permission storage directory: " + e.getMessage());
+            MyulibFramework.LOGGER.error("Failed to create Permission storage directory: " + e.getMessage());
         }
     }
 
@@ -72,7 +71,7 @@ public class NbtPermissionStorage implements DataStorage<String, PermissionScope
             }
 
         } catch (Exception e) {
-            Myulib.LOGGER.error("Failed to load Permission NBT: " + storageFile, e);
+            MyulibFramework.LOGGER.error("Failed to load Permission NBT: " + storageFile, e);
         }
 
         return new HashMap<>(fileMirror);
@@ -116,7 +115,7 @@ public class NbtPermissionStorage implements DataStorage<String, PermissionScope
             NbtIoHelper.writeRoot(storageFile, root);
 
         } catch (Exception e) {
-            Myulib.LOGGER.error("Failed to save Permission NBT: " + storageFile, e);
+            MyulibFramework.LOGGER.error("Failed to save Permission NBT: " + storageFile, e);
         }
     }
 

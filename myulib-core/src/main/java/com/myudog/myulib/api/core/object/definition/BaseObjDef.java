@@ -23,22 +23,29 @@ public abstract class BaseObjDef implements IObjectDef {
     private final Map<Property<?>, java.lang.Object> values = new HashMap<>();
 
     public static final Property<Vec3> POS = new Property<>(
-            "pos", Vec3.class, s -> {
-                String[] p = s.split(",");
-                return new Vec3(Double.parseDouble(p[0]), Double.parseDouble(p[1]), Double.parseDouble(p[2]));
-        }
+            "pos", Vec3.class,
+            s -> {
+                String cleanStr = s.replace("(", "").replace(")", "");
+                String[] p = cleanStr.split(",");
+                return new Vec3(
+                        Double.parseDouble(p[0].trim()),
+                        Double.parseDouble(p[1].trim()),
+                        Double.parseDouble(p[2].trim())
+                );
+            },
+            Vec3::toString
     );
 
     protected BaseObjDef(Identifier id, ObjectKind kind) {
         this.id = id;
         this.kind = kind;
-        define(POS, Vec3.ZERO);
+        define();
         registerProperties();
     }
 
-    protected <T> void define(Property<T> prop, T defaultValue) {
-        registry.put(prop.name(), prop);
-        values.put(prop, defaultValue);
+    protected <T> void define() {
+        registry.put(BaseObjDef.POS.name(), BaseObjDef.POS);
+        values.put(BaseObjDef.POS, Vec3.ZERO);
     }
 
     protected abstract void registerProperties();

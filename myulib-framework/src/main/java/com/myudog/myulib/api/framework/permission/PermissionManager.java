@@ -1,7 +1,6 @@
 package com.myudog.myulib.api.framework.permission;
 
-import com.myudog.myulib.Myulib;
-
+import com.myudog.myulib.MyulibFramework;
 import com.myudog.myulib.api.core.util.ShortIdRegistry;
 import com.myudog.myulib.api.framework.permission.storage.NbtPermissionStorage;
 import com.myudog.myulib.api.core.storage.DataStorage;
@@ -290,7 +289,7 @@ public final class PermissionManager {
         if (value.contains(":")) {
             try {
                 Identifier parsed = Identifier.parse(value);
-                if (Myulib.MOD_ID.equals(parsed.getNamespace())) {
+                if (MyulibFramework.MOD_ID.equals(parsed.getNamespace())) {
                     return parsed.getPath();
                 }
                 return parsed.toString();

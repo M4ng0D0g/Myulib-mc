@@ -1,6 +1,7 @@
 package com.myudog.myulib.api;
 
 import com.myudog.myulib.api.framework.field.FieldManager;
+import com.myudog.myulib.api.framework.game.GameManager;
 import com.myudog.myulib.api.framework.permission.PermissionManager;
 import com.myudog.myulib.api.framework.rolegroup.RoleGroupManager;
 import com.myudog.myulib.api.framework.ui.network.ConfigUiNetworking;
@@ -16,7 +17,7 @@ public final class MyulibFrameworkApi {
         PermissionManager.INSTANCE.install();
         FieldManager.INSTANCE.install();
         RoleGroupManager.INSTANCE.install();
-        com.myudog.myulib.api.framework.game.core.GameManager.INSTANCE.install();
+        GameManager.INSTANCE.install();
 
         ConfigUiNetworking.registerPayloads();
         ConfigUiNetworking.registerServerReceivers();

@@ -1,7 +1,7 @@
 package com.myudog.myulib.internal.game;
 
-import com.myudog.myulib.api.framework.game.core.GameDefinition;
-import com.myudog.myulib.api.framework.game.core.GameInstance;
+import com.myudog.myulib.api.framework.game.GameDefinition;
+import com.myudog.myulib.api.framework.game.GameInstance;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

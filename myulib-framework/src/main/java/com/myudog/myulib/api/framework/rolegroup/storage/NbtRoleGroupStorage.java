@@ -1,7 +1,6 @@
 package com.myudog.myulib.api.framework.rolegroup.storage;
 
-import com.myudog.myulib.Myulib;
-
+import com.myudog.myulib.MyulibFramework;
 import com.myudog.myulib.api.framework.rolegroup.RoleGroupDefinition;
 import com.myudog.myulib.api.framework.rolegroup.RoleGroupStorage;
 import com.myudog.myulib.api.core.util.NbtIoHelper;
@@ -33,14 +32,14 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
     @Override
     public void initialize(MinecraftServer server) {
         Path rootPath = NbtIoHelper.resolveRootPath(server).toAbsolutePath().normalize();
-        this.storageFile = rootPath.resolve(Myulib.MOD_ID).resolve(FILE_NAME);
+        this.storageFile = rootPath.resolve(MyulibFramework.MOD_ID).resolve(FILE_NAME);
 
         try {
             if (!Files.exists(this.storageFile.getParent())) {
                 Files.createDirectories(this.storageFile.getParent());
             }
         } catch (Exception e) {
-            Myulib.LOGGER.error("Failed to create RoleGroup storage directory: " + e.getMessage());
+            MyulibFramework.LOGGER.error("Failed to create RoleGroup storage directory: " + e.getMessage());
         }
     }
 
@@ -87,7 +86,7 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
             }
 
         } catch (Exception e) {
-            Myulib.LOGGER.error("Failed to load RoleGroup NBT: " + storageFile, e);
+            MyulibFramework.LOGGER.error("Failed to load RoleGroup NBT: " + storageFile, e);
         }
 
         return new HashMap<>(fileMirror);
@@ -160,7 +159,7 @@ public class NbtRoleGroupStorage implements RoleGroupStorage {
             root.put(GROUPS_KEY, groupList);
             NbtIoHelper.writeRoot(storageFile, root);
         } catch (Exception e) {
-            Myulib.LOGGER.error("Failed to save RoleGroup NBT: " + storageFile, e);
+            MyulibFramework.LOGGER.error("Failed to save RoleGroup NBT: " + storageFile, e);
         }
     }
 

@@ -31,7 +31,7 @@ public final class CameraCompat {
 
     public static void setPosition(Camera camera, Vec3 pos) {
         if (camera instanceof CameraAccessor accessor) {
-            accessor.setPosition(pos);
+            accessor.invokeSetPosition(pos);
         }
     }
 

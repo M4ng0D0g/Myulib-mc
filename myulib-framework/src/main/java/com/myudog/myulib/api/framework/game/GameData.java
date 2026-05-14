@@ -1,4 +1,4 @@
-package com.myudog.myulib.api.framework.game.core;
+package com.myudog.myulib.api.framework.game;
 
 import com.myudog.myulib.api.core.ecs.EcsContainer;
 import com.myudog.myulib.api.framework.game.features.*;

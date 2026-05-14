@@ -1,4 +1,4 @@
-package com.myudog.myulib.api.framework.game.core;
+package com.myudog.myulib.api.framework.game;
 
 import com.myudog.myulib.api.core.event.EventBus;
 import com.myudog.myulib.api.core.state.IState;
@@ -47,6 +47,12 @@ public abstract class GameDefinition<C extends GameConfig, D extends GameData, S
      */
     protected abstract EventBus createEventBus();
 
+    public final GameInstance<C, D, S> createInstance(@NotNull String instanceId, @NotNull C config, ServerLevel level) {
+        StateMachine<S, IGameContext> stateMachine = Objects.requireNonNull(createStateMachine(config), "createStateMachine() returned null");
+        EventBus eventBus = Objects.requireNonNull(createEventBus(), "createEventBus() returned null");
+        return new GameInstance<>(instanceId, level, this, config, stateMachine, eventBus);
+    }
+
     protected void bindBehavior(@NotNull GameInstance<C, D, S> instance) {
         TeamDefinition spectatorTeam = new TeamDefinition(
                 instance.getConfig().SPECTATOR_TEAM.toString(),
@@ -74,9 +80,8 @@ public abstract class GameDefinition<C extends GameConfig, D extends GameData, S
      */
     public abstract void onShutdown(@NotNull GameInstance<C, D, S> instance);
 
-    public final GameInstance<C, D, S> createInstance(@NotNull String instanceId, @NotNull C config, ServerLevel level) {
-        StateMachine<S, IGameContext> stateMachine = Objects.requireNonNull(createStateMachine(config), "createStateMachine() returned null");
-        EventBus eventBus = Objects.requireNonNull(createEventBus(), "createEventBus() returned null");
-        return new GameInstance<>(instanceId, level, this, config, stateMachine, eventBus);
-    }
+    public abstract void onClean(@NotNull GameInstance<C, D, S> instance);
+
+
+
 }

@@ -1,12 +1,10 @@
-package com.myudog.myulib.api.framework.game.core;
+package com.myudog.myulib.api.framework.game;
 
 import com.myudog.myulib.api.core.event.EventBus;
 import com.myudog.myulib.api.core.state.IState;
 import com.myudog.myulib.api.core.state.StateMachine;
 import com.myudog.myulib.api.core.effect.SpatialEffectManager;
 import com.myudog.myulib.api.core.object.event.StateChangeEvent;
-import com.myudog.myulib.api.core.timer.TimerDefinition;
-import com.myudog.myulib.api.core.timer.TimerManager;
 import com.myudog.myulib.api.framework.team.TeamManager;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -227,6 +225,7 @@ public class GameInstance<C extends GameConfig, D extends GameData, S extends IS
 
         try {
             definition.unbindBehavior(this);
+            definition.onClean(this);
         } catch (Exception e) {
             LOGGER.warning("Error during unbinding behavior: " + e.getMessage());
         }

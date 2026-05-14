@@ -10,12 +10,15 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class ConfigRootScreen extends Screen {
     private static final Gson GSON = new Gson();
@@ -31,6 +34,12 @@ public final class ConfigRootScreen extends Screen {
     private final List<String> dimensions = new ArrayList<>();
     private final List<String> fields = new ArrayList<>();
     private ScopeTab scopeTab = ScopeTab.GLOBAL;
+
+    private final List<GameConfigItem> gameConfigs = new ArrayList<>();
+    private final Map<String, Map<String, String>> gameConfigEdits = new HashMap<>();
+    private int selectedGameInstance = -1;
+    private int selectedGameProperty = -1;
+    private EditBox gameValueBox;
 
     private boolean dirty;
     private String baselineSnapshot = "{}";
@@ -78,10 +87,17 @@ public final class ConfigRootScreen extends Screen {
             rebuildWidgets();
         }).bounds(panelX + 8, panelY + 56, leftWidth - 16, 20).build());
 
+        addRenderableWidget(Button.builder(Component.literal("遊戲設定"), button -> {
+            viewMode = ViewMode.GAME_CONFIG;
+            rebuildWidgets();
+        }).bounds(panelX + 8, panelY + 82, leftWidth - 16, 20).build());
+
         if (viewMode == ViewMode.ROLE_GROUP) {
             buildRoleGroupWidgets(rightX, panelY + 30, rightWidth);
-        } else {
+        } else if (viewMode == ViewMode.PERMISSION) {
             buildPermissionWidgets(rightX, panelY + 30, rightWidth);
+        } else {
+            buildGameConfigWidgets(rightX, panelY + 30, rightWidth);
         }
 
         int confirmY = panelY + panelHeight - 34;
@@ -164,6 +180,61 @@ public final class ConfigRootScreen extends Screen {
         }
     }
 
+    private void buildGameConfigWidgets(int x, int y, int width) {
+        int instanceWidth = Math.max(120, (width - 8) / 2);
+        int propertyWidth = width - instanceWidth - 8;
+        int rowY = y;
+
+        for (int i = 0; i < gameConfigs.size(); i++) {
+            GameConfigItem item = gameConfigs.get(i);
+            boolean selected = selectedGameInstance == i;
+            String label = item.instanceId + (selected ? " <" : "");
+            int finalI = i;
+            addRenderableWidget(Button.builder(Component.literal(label), button -> {
+                selectedGameInstance = finalI;
+                selectedGameProperty = -1;
+                syncGameValueBox();
+                rebuildWidgets();
+            }).bounds(x, rowY, instanceWidth, 20).build());
+            rowY += 22;
+            if (rowY > this.height - 120) {
+                break;
+            }
+        }
+
+        int propY = y;
+        List<GamePropertyItem> properties = selectedGameInstance >= 0 && selectedGameInstance < gameConfigs.size()
+                ? gameConfigs.get(selectedGameInstance).properties
+                : List.of();
+        for (int i = 0; i < properties.size(); i++) {
+            GamePropertyItem prop = properties.get(i);
+            boolean selected = selectedGameProperty == i;
+            String value = resolveGamePropertyValue(selectedGameInstance, prop.name, prop.value);
+            String label = prop.name + "=" + value + (selected ? " <" : "");
+            int finalI = i;
+            addRenderableWidget(Button.builder(Component.literal(label), button -> {
+                selectedGameProperty = finalI;
+                syncGameValueBox();
+                rebuildWidgets();
+            }).bounds(x + instanceWidth + 8, propY, propertyWidth, 20).build());
+            propY += 22;
+            if (propY > this.height - 120) {
+                break;
+            }
+        }
+
+        if (gameValueBox == null) {
+            gameValueBox = new EditBox(this.font, x, this.height - 78, width - 90, 20, Component.literal("value"));
+        }
+        syncGameValueBox();
+        addRenderableWidget(gameValueBox);
+
+        addRenderableWidget(Button.builder(Component.literal("套用"), button -> {
+            applyGameConfigEdit();
+            rebuildWidgets();
+        }).bounds(x + width - 80, this.height - 78, 72, 20).build());
+    }
+
     private void moveRoleGroup(int index, int delta) {
         int target = index + delta;
         if (index < 0 || index >= roleGroups.size() || target < 0 || target >= roleGroups.size()) {
@@ -190,6 +261,21 @@ public final class ConfigRootScreen extends Screen {
         }
         mutation.add("roleGroupOrder", order);
 
+        JsonArray gameConfigPatches = new JsonArray();
+        for (Map.Entry<String, Map<String, String>> entry : gameConfigEdits.entrySet()) {
+            String instanceId = entry.getKey();
+            for (Map.Entry<String, String> prop : entry.getValue().entrySet()) {
+                JsonObject patch = new JsonObject();
+                patch.addProperty("instanceId", instanceId);
+                patch.addProperty("property", prop.getKey());
+                patch.addProperty("value", prop.getValue());
+                gameConfigPatches.add(patch);
+            }
+        }
+        if (!gameConfigPatches.isEmpty()) {
+            mutation.add("gameConfigPatches", gameConfigPatches);
+        }
+
         ClientPlayNetworking.send(new ConfigUiNetworking.ConfigApplyPayload(GSON.toJson(mutation)));
         ClientPlayNetworking.send(new ConfigUiNetworking.ConfigSnapshotRequestPayload());
     }
@@ -202,6 +288,10 @@ public final class ConfigRootScreen extends Screen {
         globalGroups.clear();
         dimensions.clear();
         fields.clear();
+        gameConfigs.clear();
+        gameConfigEdits.clear();
+        selectedGameInstance = -1;
+        selectedGameProperty = -1;
 
         JsonObject root = parseObject(baselineSnapshot);
         JsonArray roleArray = root.getAsJsonArray("roleGroups");
@@ -246,6 +336,79 @@ public final class ConfigRootScreen extends Screen {
                 }
             }
         }
+
+        JsonArray gameConfigArray = root.getAsJsonArray("gameConfigs");
+        if (gameConfigArray != null) {
+            for (JsonElement element : gameConfigArray) {
+                if (!(element instanceof JsonObject item)) {
+                    continue;
+                }
+                String instanceId = item.get("instanceId").getAsString();
+                String definition = item.get("definition").getAsString();
+                boolean initialized = item.get("initialized").getAsBoolean();
+                boolean started = item.get("started").getAsBoolean();
+                List<GamePropertyItem> props = new ArrayList<>();
+                JsonObject properties = item.getAsJsonObject("properties");
+                if (properties != null) {
+                    for (Map.Entry<String, JsonElement> entry : properties.entrySet()) {
+                        String value = entry.getValue() == null ? "" : entry.getValue().getAsString();
+                        props.add(new GamePropertyItem(entry.getKey(), value));
+                    }
+                }
+                props.sort(Comparator.comparing(GamePropertyItem::name));
+                gameConfigs.add(new GameConfigItem(instanceId, definition, initialized, started, props));
+            }
+        }
+    }
+
+    private void applyGameConfigEdit() {
+        if (selectedGameInstance < 0 || selectedGameInstance >= gameConfigs.size()) {
+            return;
+        }
+        if (selectedGameProperty < 0) {
+            return;
+        }
+        GameConfigItem item = gameConfigs.get(selectedGameInstance);
+        if (item.initialized) {
+            return;
+        }
+        GamePropertyItem prop = item.properties.get(selectedGameProperty);
+        String newValue = gameValueBox == null ? "" : gameValueBox.getValue();
+        gameConfigEdits.computeIfAbsent(item.instanceId, ignored -> new HashMap<>()).put(prop.name, newValue);
+        dirty = true;
+    }
+
+    private void syncGameValueBox() {
+        if (gameValueBox == null) {
+            return;
+        }
+        if (selectedGameInstance < 0 || selectedGameInstance >= gameConfigs.size()) {
+            gameValueBox.setValue("");
+            gameValueBox.setEditable(false);
+            return;
+        }
+        GameConfigItem item = gameConfigs.get(selectedGameInstance);
+        boolean readonly = clientReadonlyHint || ConfigUiClientState.readonly() || item.initialized;
+        gameValueBox.setEditable(!readonly);
+        if (selectedGameProperty < 0 || selectedGameProperty >= item.properties.size()) {
+            gameValueBox.setValue("");
+            return;
+        }
+        GamePropertyItem prop = item.properties.get(selectedGameProperty);
+        String value = resolveGamePropertyValue(selectedGameInstance, prop.name, prop.value);
+        gameValueBox.setValue(value);
+    }
+
+    private String resolveGamePropertyValue(int instanceIndex, String propertyName, String defaultValue) {
+        if (instanceIndex < 0 || instanceIndex >= gameConfigs.size()) {
+            return defaultValue;
+        }
+        String instanceId = gameConfigs.get(instanceIndex).instanceId;
+        Map<String, String> edits = gameConfigEdits.get(instanceId);
+        if (edits == null) {
+            return defaultValue;
+        }
+        return edits.getOrDefault(propertyName, defaultValue);
     }
 
     @Override
@@ -326,7 +489,8 @@ public final class ConfigRootScreen extends Screen {
 
     private enum ViewMode {
         ROLE_GROUP,
-        PERMISSION
+        PERMISSION,
+        GAME_CONFIG
     }
 
     private enum ScopeTab {
@@ -336,6 +500,12 @@ public final class ConfigRootScreen extends Screen {
     }
 
     private record RoleGroupItem(String id, String path, int priority) {
+    }
+
+    private record GameConfigItem(String instanceId, String definition, boolean initialized, boolean started, List<GamePropertyItem> properties) {
+    }
+
+    private record GamePropertyItem(String name, String value) {
     }
 }
 
